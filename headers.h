@@ -65,7 +65,7 @@ void destroyClk(bool terminateAll)
 // PRIORITY QUEUE
 typedef struct item
 {
-    int value; // ID of the process
+    int id; // ID of the process
     int arrivalTime;
     int runTime;
     int priority;
@@ -107,7 +107,7 @@ void enqueue(PriorityQueue *q, int value, int priority)
         q->size++;
 
         // Insert the element
-        q->pr[q->size].value = value;
+        q->pr[q->size].id = value;
         q->pr[q->size].priority = priority;
     }
 }
@@ -126,7 +126,7 @@ int peek(PriorityQueue *q, Item *it)
         // If priority is same choose
         // the element with the
         // highest value
-        if (highestPriority == q->pr[i].priority && ind > -1 && q->pr[ind].value < q->pr[i].value)
+        if (highestPriority == q->pr[i].priority && ind > -1 && q->pr[ind].id < q->pr[i].id)
         {
             highestPriority = q->pr[i].priority;
             ind = i;
@@ -138,7 +138,7 @@ int peek(PriorityQueue *q, Item *it)
         }
     }
     it->priority = q->pr[ind].priority;
-    it->value = q->pr[ind].value;
+    it->id = q->pr[ind].id;
     // Return position of the element
     return ind;
 }
