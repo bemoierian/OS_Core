@@ -1,5 +1,5 @@
 #include "headers.h"
-
+#include <string.h>
 void clearResources(int);
 
 int main(int argc, char *argv[])
@@ -25,18 +25,19 @@ int main(int argc, char *argv[])
     while(fgets(str,40, ptr) != NULL)
     {
         char* line = strtok(str, " ");
-        if(line[0] == '#') // ignore comment lines
+        if(line[0] == '#') // ignore comment lines 
             continue;
         int x[4]; //store the values of each process
         for(int i=0;i<4;i++)
         {
-            x[i] = atoi(line);
+            int a = atoi(line);
             line = strtok(NULL, " ");
         }
         processes[k].id = x[0];  
         processes[k].arrivalTime = x[1];  
         processes[k].runTime = x[2];  
         processes[k].priority = x[3];  
+        printf("\n");
     }
     fclose(ptr);
     // 3. Initiate and create the scheduler and clock processes.
