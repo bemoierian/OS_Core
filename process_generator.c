@@ -2,15 +2,35 @@
 
 void clearResources(int);
 
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
     signal(SIGINT, clearResources);
     // TODO Initialization
     // 1. Read the input files.
+    FILE *file;
+    file = fopen("processes.txt", "r");
     // 2. Ask the user for the chosen scheduling algorithm and its parameters, if there are any.
+    printf("Choose the scheduling algorithm\n");
+    printf("Non-preemptive Highest Priority First (HPF) : 1\n");
+    printf("Shortest Remaining time Next (SRTN) : 2\n");
+    printf("Round Robin (RR) : 3\n");
+    int sch_algo;
+    scanf("%d", &sch_algo);
+    if (sch_algo == 3)
+    {
+        PriorityQueue *q;
+        int s;
+        scanf("%d", &s);
+        q->pr[0].arrivalTime;
+        createCircularQueue(q, s);
+        // read the file
+        // enQueueCircularQueue(q, )
+    }
+    fclose(file);
     // 3. Initiate and create the scheduler and clock processes.
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
+
     // To get time use this
     int x = getClk();
     printf("current time is %d\n", x);
@@ -23,5 +43,26 @@ int main(int argc, char * argv[])
 
 void clearResources(int signum)
 {
-    //TODO Clears all resources in case of interruption
+    // TODO Clears all resources in case of interruption
 }
+
+// void InitiateAlgorithm(int sch_algo, processes)
+// {
+//     switch (sch_algo)
+//     {
+//     case 1:
+//         HPF(processes);
+//         break;
+
+//     case 2:
+//         SRTN(processes);
+//         break;
+
+//     case 3:
+//         RR(processes);
+//         break;
+
+//     default:
+//         break;
+//     }
+// }
