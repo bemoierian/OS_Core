@@ -3,7 +3,7 @@
 void clearResources(int);
 
 int msgq_id;
-Item *processes;
+Process *processes;
 
 int main(int argc, char *argv[])
 {
@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     }
     fclose(ptr);
     ptr = fopen("processes.txt", "r");
-    processes = (Item *)malloc(processes_number * sizeof *processes);
+    processes = (Process *)malloc(processes_number * sizeof *processes);
     int k = 0;
     char str[40];
     while (fgets(str, 40, ptr) != NULL)
@@ -68,8 +68,9 @@ int main(int argc, char *argv[])
     if (pid2 == 0)
     {
         char algo[2];
-        char sendedSize[2] = {q_size, '\0'}; // send the max
-        sprintf(algo, "%d", sch_algo);       // converts the int to string to sended in the arguments of the process
+        char sendedSize[2]; // send the max of process
+        sprintf(sendedSize, "%d", q_size);
+        sprintf(algo, "%d", sch_algo); // converts the int to string to sended in the arguments of the process
         execl("scheduler.out", "scheduler", algo, sendedSize, NULL);
     }
     // 4. Use this function after creating the clock process to initialize clock

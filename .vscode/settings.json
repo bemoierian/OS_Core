@@ -10,6 +10,8 @@
         "span": "c",
         "regex": "c",
         "utility": "c",
-        "valarray": "c"
+        "valarray": "c",
+        "string.h": "c",
+        "random": "c"
     }
 }

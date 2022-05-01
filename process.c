@@ -3,18 +3,21 @@
 /* Modify this file as needed*/
 int remainingtime;
 
-int main(int agrc, char * argv[])
+int main(int agrc, char *argv[])
 {
     initClk();
-    
-    //TODO it needs to get the remaining time from somewhere
-    //remainingtime = ??;
+    int startTime = getClk();    // get the start time of the process
+    int runTime = atoi(argv[1]); // RuntTime of the process
+    remainingtime = runTime;
+    printf("RunTime = %d \n", runTime);
+    // TODO it needs to get the remaining time from somewhere
+    // remainingtime = ??;
     while (remainingtime > 0)
     {
         // remainingtime = ??;
+        remainingtime = runTime - (getClk() - startTime);
     }
-    
+
     destroyClk(false);
-    
     return 0;
 }
