@@ -17,6 +17,7 @@ typedef short bool;
 #define false 0
 
 #define SHKEY 300
+#define MSGKEY 301
 
 ///==============================
 // don't mess with this variable//
@@ -62,6 +63,8 @@ void destroyClk(bool terminateAll)
     }
 }
 
+
+
 // PRIORITY QUEUE
 typedef struct item
 {
@@ -71,6 +74,11 @@ typedef struct item
     int priority;
 } Item;
 
+struct my_msgbuff
+{
+    long mtype;
+    Item m_process;
+};
 // max number of process in the priority queue
 
 typedef struct Pqueue

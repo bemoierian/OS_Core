@@ -2,6 +2,10 @@
 #include <string.h>
 void clearResources(int);
 
+
+int msgq_id;
+Item* processes;
+ 
 int main(int argc, char *argv[])
 {
     signal(SIGINT, clearResources);
@@ -22,9 +26,9 @@ int main(int argc, char *argv[])
     }
     fclose(ptr);
     ptr = fopen("processes.txt", "r");
-    Item* processes = malloc(processes_number * sizeof * processes);  
+    processes = (Item *)malloc(processes_number * sizeof * processes);  
     int k = 0;
-    char* str = (char*)malloc(40);
+    char str[40];
     while(fgets(str,40, ptr) != NULL)
     {
         char* line = strtok(str, " ");
@@ -76,59 +80,77 @@ int main(int argc, char *argv[])
     printf("current time is %d\n", curr_time);
     printf("total runtime is %d\n", total_runtime);
     //TODO Generation Main Loop
+    msgq_id = msgget(MSGKEY, 0666 | IPC_CREAT); //create message queue and return id
+    int send_val;
+    struct my_msgbuff message_send;
     while (curr_time < total_runtime)
     {
         printf("current time : %d\n",curr_time);
         for (int i = 0; i < processes_number; i++)
         {
+            // if one process come at a time : then sleep 1 sec to avoid redundent clock reading
+            // 5. Create a data structure for processes and provide it with its parameters.
+            // 6. Send the information to the scheduler at the appropriate time.
             if(curr_time == processes[i].arrivalTime)
             {
                 //send to scheduler
-                printf("Proccess Scheduled %d at Time : %d\n",processes[i].id,curr_time);
+                message_send.m_process = processes[i];
+                message_send.mtype=7;
+                send_val = msgsnd(msgq_id, &message_send, sizeof(message_send.m_process), !IPC_NOWAIT);
+                if (send_val == -1) perror("Error: process_generator failed to send the input message \n");
             }
         }
-        // if one process come at a time : then sleep 1 sec to avoid redundent clock reading
-        // 5. Create a data structure for processes and provide it with its parameters.
-        // 6. Send the information to the scheduler at the appropriate time.
-        // 7. Clear clock resources
+        
         sleep(1);
         curr_time = getClk();
     }
     printf("process generator destroying clock\n");
+
+    free(processes);
+    msgctl(msgq_id, IPC_RMID, (struct msqid_ds *)0);
+    // 7. Clear clock resources
     destroyClk(true);
 }
 
 void clearResources(int signum)
 {
     // TODO Clears all resources in case of interruption
+    free(processes);
+    msgctl(msgq_id, IPC_RMID, (struct msqid_ds *)0);
+    destroyClk(true);
 }
 
 
 
 
 
-void InitiateAlgorithm(int sch_algo)
-{
-    switch (sch_algo)
-    {
-    case 1:
-        //HPF();
-        break;
+// void InitiateAlgorithm(int sch_algo,int q_size)
+// {
+//     switch (sch_algo)
+//     {
+//     case 1:
+//         //HPF();
+//         PriorityQueue *q;
+//         createPriorityQ(q, q_size);
+//         break;
 
-    case 2:
-        //SRTN();
-        break;
+//     case 2:
+//         //SRTN();
+//         PriorityQueue *q;
+//         createPriorityQ(q, q_size);
+//         break;
 
-    case 3:
-        // RR();
-        // PriorityQueue *q;
-        // q->pr[0].arrivalTime;
-        // createCircularQueue(q, s);
-        // read the file
-        // enQueueCircularQueue(q, )
-        break;
+//     case 3:
+//         // RR();
+//         CircularQueue *q;
+//         createCircularQueue(q, q_size);
+//         // q->pr[0].arrivalTime;
+//         // createCircularQueue(q, s);
+//         // read the file
+//         // enQueueCircularQueue(q, )
+//         break;
 
-    default:
-        break;
-    }
-}
+//     default:
+//         break;
+//     }
+// }
