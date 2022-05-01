@@ -10,6 +10,7 @@ int main(int argc, char *argv[])
     FILE *ptr;
     ptr = fopen("processes.txt", "r");
     int processes_number=0;
+    int total_runtime = 0;
     char a ;
     while(!feof(ptr))
     {
@@ -38,7 +39,8 @@ int main(int argc, char *argv[])
         processes[k].id = x[0];       
         processes[k].arrivalTime = x[1];  
         processes[k].runTime = x[2];  
-        processes[k].priority = x[3];     
+        processes[k].priority = x[3];
+        total_runtime +=  processes[k].runTime;    
         k++;
     }
     fclose(ptr);
@@ -62,7 +64,9 @@ int main(int argc, char *argv[])
     int pid2 = fork();
     if (pid2 == 0)
     {
-        execl("scheduler.out","scheduler", NULL);
+        char algo[2];
+        sprintf(algo, "%d", sch_algo);  
+        execl("scheduler.out","scheduler",algo, NULL);
     }
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
@@ -70,10 +74,27 @@ int main(int argc, char *argv[])
     // To get time use this
     int curr_time = getClk();
     printf("current time is %d\n", curr_time);
-    // TODO Generation Main Loop
-    // 5. Create a data structure for processes and provide it with its parameters.
-    // 6. Send the information to the scheduler at the appropriate time.
-    // 7. Clear clock resources
+    printf("total runtime is %d\n", total_runtime);
+    //TODO Generation Main Loop
+    while (curr_time < total_runtime)
+    {
+        printf("current time : %d\n",curr_time);
+        for (int i = 0; i < processes_number; i++)
+        {
+            if(curr_time == processes[i].arrivalTime)
+            {
+                //send to scheduler
+                printf("Proccess Scheduled %d at Time : %d\n",processes[i].id,curr_time);
+            }
+        }
+        // if one process come at a time : then sleep 1 sec to avoid redundent clock reading
+        // 5. Create a data structure for processes and provide it with its parameters.
+        // 6. Send the information to the scheduler at the appropriate time.
+        // 7. Clear clock resources
+        sleep(1);
+        curr_time = getClk();
+    }
+    printf("process generator destroying clock\n");
     destroyClk(true);
 }
 
@@ -81,6 +102,10 @@ void clearResources(int signum)
 {
     // TODO Clears all resources in case of interruption
 }
+
+
+
+
 
 void InitiateAlgorithm(int sch_algo)
 {
