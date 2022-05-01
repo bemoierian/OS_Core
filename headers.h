@@ -178,7 +178,7 @@ void dequeue(PriorityQueue *q, Item *it)
 //  CIRCULAR QUEUE IMPLEMENTATION
 typedef struct circQueue
 {
-    int *items;
+    Item *items;
     int size;
     int front;
     int rear;
@@ -189,7 +189,7 @@ void createCircularQueue(CircularQueue *q, int s)
     q->front = -1;
     q->rear = -1;
     q->size = s; // max size in the circular queue
-    q->items = (int *)malloc(q->size * sizeof(int));
+    q->items = (Item*)malloc(q->size * sizeof(Item));
 }
 // Check if the queue is full
 bool isCircularQueueFull(CircularQueue *q)
@@ -208,12 +208,11 @@ int isCircularQueueEmpty(CircularQueue *q)
 }
 
 // Adding an element
-int enQueueCircularQueue(CircularQueue *q, int element)
+void enQueueCircularQueue(CircularQueue *q, Item element)
 {
     if (isCircularQueueFull(q))
     {
-        printf("\n Queue is full!! \n");
-        return -1;
+        printf("\n Circular Queue is full \n");
     }
     else
     {
@@ -221,23 +220,24 @@ int enQueueCircularQueue(CircularQueue *q, int element)
             q->front = 0;
         q->rear = (q->rear + 1) % q->size;
         q->items[q->rear] = element;
-        printf("\n Inserted -> %d", element);
+        printf("\n Inserted process ID -> %d", element.id);
         return 0;
     }
 }
 
 // Removing an element
-int deQueueCircularQueue(CircularQueue *q)
+void deQueueCircularQueue(CircularQueue *q,  Item* element)
 {
-    int element;
+    // int element;
     if (isCircularQueueEmpty(q))
     {
-        printf("\n Queue is empty !! \n");
-        return (-1);
+        printf("\nCircular Queue is empty \n");
     }
     else
-    {
-        element = q->items[q->front];
+    {        
+        element->id = q->items[q->front].id;
+        element->priority = q->items[q->front].priority;
+        element->runTime = q->items[q->front].runTime;
         if (q->front == q->rear)
         {
             q->front = -1;
@@ -249,23 +249,23 @@ int deQueueCircularQueue(CircularQueue *q)
         {
             q->front = (q->front + 1) % q->size;
         }
-        printf("\n Deleted element -> %d \n", element);
-        return (element);
+        printf("\n Deleted element -> %d \n", element->id);
     }
 }
 // peek
-int peekCircularQueue(CircularQueue *q)
+void peekCircularQueue(CircularQueue *q, Item* element)
 {
-    int element;
     if (isCircularQueueEmpty(q))
     {
-        printf("\n Peek: Queue is empty \n");
+        printf("\n Peek: Circular Queue is empty \n");
         return (-1);
     }
     else
     {
-        element = q->items[q->front];
-        printf("\n Peek element -> %d \n", element);
+        element->id = q->items[q->front].id;
+        element->priority = q->items[q->front].priority;
+        element->runTime = q->items[q->front].runTime;
+        printf("\n Peek element -> %d \n", element->id);
         return (element);
     }
 }
@@ -282,7 +282,7 @@ void displayCircularQueue(CircularQueue *q)
         printf("\n Items -> ");
         for (i = q->front; i != q->rear; i = (i + 1) % q->size)
         {
-            printf("%d ", q->items[i]);
+            printf("%d ", q->items[i].id);
         }
         printf("%d ", q->items[i]);
         printf("\n Rear -> %d \n", q->rear);
