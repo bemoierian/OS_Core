@@ -7,21 +7,23 @@ int main(int argc, char *argv[])
     signal(SIGINT, clearResources);
     // TODO Initialization
     // 1. Read the input files.
-    
     FILE *ptr;
     ptr = fopen("processes.txt", "r");
-    // 2. Ask the user for the chosen scheduling algorithm and its parameters, if there are any.
-    printf("Choose the scheduling algorithm\n");
-    printf("Non-preemptive Highest Priority First (HPF) : 1\n");
-    printf("Shortest Remaining time Next (SRTN) : 2\n");
-    printf("Round Robin (RR) : 3\n");
-    int sch_algo;
-    scanf("%d", &sch_algo);
-    int q_size;
-    scanf("%d", &q_size);
-    Item* processes = malloc(q_size * sizeof * processes);
+    int processes_number=0;
+    char a ;
+    while(!feof(ptr))
+    {
+        a = fgetc(ptr);
+        if(a == '\n')
+        {
+            processes_number++;
+        }
+    }
+    fclose(ptr);
+    ptr = fopen("processes.txt", "r");
+    Item* processes = malloc(processes_number * sizeof * processes);  
     int k = 0;
-    char str[40];
+    char* str = (char*)malloc(40);
     while(fgets(str,40, ptr) != NULL)
     {
         char* line = strtok(str, " ");
@@ -30,17 +32,38 @@ int main(int argc, char *argv[])
         int x[4]; //store the values of each process
         for(int i=0;i<4;i++)
         {
-            int a = atoi(line);
+            x[i] = atoi(line);
             line = strtok(NULL, " ");
         }
-        processes[k].id = x[0];  
+        processes[k].id = x[0];       
         processes[k].arrivalTime = x[1];  
         processes[k].runTime = x[2];  
-        processes[k].priority = x[3];  
-        printf("\n");
+        processes[k].priority = x[3];     
+        k++;
     }
     fclose(ptr);
+    // 2. Ask the user for the chosen scheduling algorithm and its parameters, if there are any.
+    printf("Choose the scheduling algorithm\n");
+    printf("Non-preemptive Highest Priority First (HPF) : 1\n");
+    printf("Shortest Remaining time Next (SRTN) : 2\n");
+    printf("Round Robin (RR) : 3\n");
+    int sch_algo;
+    scanf("%d", &sch_algo);
+    printf("Choose the size of the queue\n");
+    int q_size;
+    scanf("%d", &q_size);
+    printf("\n");
     // 3. Initiate and create the scheduler and clock processes.
+    int pid1 = fork();
+    if (pid1 == 0)
+    {
+        execl("clk.out","clk", NULL);
+    }
+    int pid2 = fork();
+    if (pid2 == 0)
+    {
+        execl("scheduler.out","scheduler", NULL);
+    }
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
 
