@@ -54,6 +54,12 @@ int main(int argc, char *argv[])
     printf("Round Robin (RR) : 3\n");
     int sch_algo;
     scanf("%d", &sch_algo);
+    int Quantum=0;
+    if(sch_algo == 3)
+    {
+        printf("Please enter the quatum of RR\n");
+        scanf("%d", &Quantum);
+    }
     printf("Choose the size of the queue\n");
     int q_size;
     scanf("%d", &q_size);
@@ -68,10 +74,12 @@ int main(int argc, char *argv[])
     if (pid2 == 0)
     {
         char algo[2];
+        char Q[2];
         char sendedSize[2]; // send the max of process
         sprintf(sendedSize, "%d", q_size);
+        sprintf(Q, "%d", Quantum);
         sprintf(algo, "%d", sch_algo); // converts the int to string to sended in the arguments of the process
-        execl("scheduler.out", "scheduler", algo, sendedSize, NULL);
+        execl("scheduler.out", "scheduler", algo, sendedSize,Q, NULL);
     }
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
@@ -84,9 +92,9 @@ int main(int argc, char *argv[])
     msgq_id = msgget(MSGKEY, 0666 | IPC_CREAT); // create message queue and return id
     int send_val;
     struct my_msgbuff message_send;
-    while (curr_time < total_runtime)
+    while (curr_time <= total_runtime)
     {
-        printf("current time : %d\n", curr_time);
+        //printf("current time : %d\n", curr_time);
         for (int i = 0; i < processes_number; i++)
         {
             // if one process come at a time : then sleep 1 sec to avoid redundent clock reading
@@ -100,10 +108,11 @@ int main(int argc, char *argv[])
                 send_val = msgsnd(msgq_id, &message_send, sizeof(message_send.m_process), !IPC_NOWAIT);
                 if (send_val == -1)
                     perror("Error: process_generator failed to send the input message \n");
+                processes[i].arrivalTime = -1;
             }
         }
 
-        sleep(1);
+        //sleep(1);
         curr_time = getClk();
     }
     printf("process generator destroying clock\n");
