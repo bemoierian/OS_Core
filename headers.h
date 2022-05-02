@@ -96,12 +96,12 @@ void createPriorityQ(PriorityQueue *q, int m)
 // check if the Prio_Q is empty
 bool isPriorityQueueEmpty(PriorityQueue *q)
 {
-    return q->size == -1;
+    return q->size == 0;
 }
 // check if the Prio_Q is full
 bool isPriorityQueueFull(PriorityQueue *q)
 {
-    return q->size == q->max - 1;
+    return q->size == q->max;
 }
 // Function to insert a new element
 // into priority queue
@@ -109,29 +109,26 @@ void enqueue(PriorityQueue *q, Process newP)
 {
     if (!isPriorityQueueFull(q))
     {
-        // Increase the size
-        q->size++;
-
         // Insert the element
         q->pr[q->size].id = newP.id;
         q->pr[q->size].priority = newP.priority;
         q->pr[q->size].arrivalTime = newP.arrivalTime;
         q->pr[q->size].runTime = newP.runTime;
+        // Increase the size
+        q->size++;
     }
 }
 
 // Function to check the top element
 int peek(PriorityQueue *q, Process *it)
 {
-    it = (Process *)malloc(sizeof(Process) * 1);
     int highestPriority = INT_MAX;
     int ind = -1;
 
     // Check for the element with
     // highest priority
-    for (int i = 0; i <= q->size; i++)
+    for (int i = 0; i < q->size; i++)
     {
-
         // If priority is same choose
         // the element with the
         // highest value

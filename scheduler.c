@@ -17,6 +17,7 @@ Process currrentProc; // the currently running process
 PCB *processTable;    // the process table of the OS
 /////////////////////
 FILE *ptr; // pointer to the output file
+
 // Functions Declarations
 void processTerminate(int sigID);
 void WriteOutputLine(FILE *ptr, int time, int process_id, char *state, int arr, int total, int reamain, int wait);
@@ -35,29 +36,28 @@ int main(int argc, char *argv[])
     processTable = (PCB *)malloc(sizeof(PCB) * q_size);
 
     // the queues used in scheduling depends on the type of the algorithm
-    PriorityQueue *q1;
-    CircularQueue *q2;
+    PriorityQueue q1;
+    CircularQueue q2;
 
     // switch case to choose the algo
     switch (sch_algo)
     {
     case 1:
         // HPF();
-        q1 = (PriorityQueue *)malloc(sizeof(PriorityQueue));
-        createPriorityQ(q1, q_size);
-        printf("The Q created\n");
+        // q1 = (PriorityQueue *)malloc(sizeof(PriorityQueue));
+        createPriorityQ(&q1, q_size);
         break;
 
     case 2:
         // SRTN();
-        q1 = (PriorityQueue *)malloc(sizeof(PriorityQueue));
-        createPriorityQ(q1, q_size);
+        // q1 = (PriorityQueue *)malloc(sizeof(PriorityQueue));
+        createPriorityQ(&q1, q_size);
         break;
 
     case 3:
         // RR();
-        q2 = (CircularQueue *)malloc(sizeof(CircularQueue));
-        createCircularQueue(q2, q_size);
+        // q2 = (CircularQueue *)malloc(sizeof(CircularQueue));
+        createCircularQueue(&q2, q_size);
         break;
 
     default:
@@ -77,6 +77,7 @@ int main(int argc, char *argv[])
             int recv_Val = msgrcv(msgq_id, &message_recieved, sizeof(message_recieved.m_process), 7, IPC_NOWAIT);
             if (recv_Val == -1)
                 perror("Error: Scheduler failed to receive  \n");
+
             printf("Proccess Scheduled Id : %d at Time : %d\n", message_recieved.m_process.id, message_recieved.m_process.arrivalTime);
 
             Process newProc = message_recieved.m_process;
@@ -88,11 +89,12 @@ int main(int argc, char *argv[])
             // enqueue the new process
             if (sch_algo < 3)
             { // for HPF and SRTF
-                enqueue(q1, message_recieved.m_process);
+                // printf("Run Time from scheduler = %d '\n", newProc.runTime);
+                enqueue(&q1, message_recieved.m_process);
             }
             else
             {
-                enQueueCircularQueue(q2, message_recieved.m_process);
+                enQueueCircularQueue(&q2, message_recieved.m_process);
             }
         }
         // TODO implement the scheduler :)
@@ -100,12 +102,13 @@ int main(int argc, char *argv[])
         {
             switch (sch_algo)
             {
-            case 1:
+            case 1:;
                 // Non-preemptive Highest Priority First (HPF)
 
-                bool flag = dequeue(q1, &currrentProc);
+                bool flag = dequeue(&q1, &currrentProc);
                 if (flag)
                 {
+                    printf("%d \n", currrentProc.runTime);
                     int pid = fork();
                     if (pid == 0) // child
                     {
