@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <limits.h>
+#include <string.h>
 
 typedef short bool;
 #define true 1
@@ -155,7 +156,7 @@ int peek(PriorityQueue *q, Process *it)
 
 // Function to remove the element with
 // the highest priority
-void dequeue(PriorityQueue *q, Process *it)
+bool dequeue(PriorityQueue *q, Process *it)
 {
     if (!isPriorityQueueEmpty(q))
     {
@@ -174,7 +175,9 @@ void dequeue(PriorityQueue *q, Process *it)
         // Decrease the size of the
         // priority queue by one
         q->size--;
+        return true;
     }
+    return false;
 }
 
 //  CIRCULAR QUEUE IMPLEMENTATION

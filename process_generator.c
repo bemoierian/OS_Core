@@ -1,5 +1,5 @@
 #include "headers.h"
-#include <string.h>
+
 void clearResources(int);
 
 int msgq_id;
@@ -59,12 +59,12 @@ int main(int argc, char *argv[])
     scanf("%d", &q_size);
     printf("\n");
     // 3. Initiate and create the scheduler and clock processes.
-    int pid1 = fork();
+    int pid1 = fork(); // fork for the clk
     if (pid1 == 0)
     {
         execl("clk.out", "clk", NULL);
     }
-    int pid2 = fork();
+    int pid2 = fork(); // fork for the scheduler
     if (pid2 == 0)
     {
         char algo[2];

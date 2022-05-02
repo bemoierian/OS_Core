@@ -17,7 +17,7 @@ int main(int agrc, char *argv[])
         // remainingtime = ??;
         remainingtime = runTime - (getClk() - startTime);
     }
-
+    kill(getppid(), SIGUSR1); // send the signal to the schedular (parent)
     destroyClk(false);
     return 0;
 }
