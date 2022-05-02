@@ -72,6 +72,7 @@ int main(int argc, char *argv[])
     {
         rc = msgctl(msgq_id, IPC_STAT, &buf); // check if there is a comming process
         num_messages = buf.msg_qnum;
+        int prevArr = 0;
         if (num_messages > 0)
         {
             int recv_Val = msgrcv(msgq_id, &message_recieved, sizeof(message_recieved.m_process), 7, IPC_NOWAIT);
@@ -79,7 +80,6 @@ int main(int argc, char *argv[])
                 perror("Error: Scheduler failed to receive  \n");
 
             printf("Proccess Scheduled Id : %d at Time : %d\n", message_recieved.m_process.id, message_recieved.m_process.arrivalTime);
-
             Process newProc = message_recieved.m_process;
             processTable[newProc.id - 1].priority = newProc.priority;
             processTable[newProc.id - 1].execTime = newProc.runTime;
@@ -96,6 +96,19 @@ int main(int argc, char *argv[])
             {
                 enQueueCircularQueue(&q2, message_recieved.m_process);
             }
+            //initialise prevArr with the value of the first process
+            if (prevArr == 0)
+            {
+                prevArr = message_recieved.m_process.arrivalTime;
+            }
+            //keep receiving processes that arrived at the same time to fill the queue
+            //before scheduling
+            if (prevArr == message_recieved.m_process.arrivalTime)
+            {
+                prevArr = message_recieved.m_process.arrivalTime;
+                continue;
+            }
+            
         }
         // TODO implement the scheduler :)
         if (cpuFree)
