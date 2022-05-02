@@ -223,7 +223,7 @@ void enQueueCircularQueue(CircularQueue *q, Process element)
 }
 
 // Removing an element
-void deQueueCircularQueue(CircularQueue *q, Process *element)
+bool deQueueCircularQueue(CircularQueue *q, Process *element)
 {
     // int element;
     if (!isCircularQueueEmpty(q))
@@ -243,18 +243,22 @@ void deQueueCircularQueue(CircularQueue *q, Process *element)
             q->front = (q->front + 1) % q->size;
         }
         // printf("\n Deleted element -> %d \n", element->id);
+        return true;
     }
+    return false;
 }
 // peek
-void peekCircularQueue(CircularQueue *q, Process *element)
+bool peekCircularQueue(CircularQueue *q, Process *element)
 {
-    if (isCircularQueueEmpty(q))
+    if (!isCircularQueueEmpty(q))
     {
         element->id = q->items[q->front].id;
         element->priority = q->items[q->front].priority;
         element->runTime = q->items[q->front].runTime;
         // printf("\n Peek element -> %d \n", element->id);
+        return true;
     }
+    return false;
 }
 
 // Display the queue
