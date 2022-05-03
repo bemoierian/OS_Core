@@ -24,6 +24,9 @@ FILE *ptr; // pointer to the output file
 void processTerminate(int sigID);
 void WriteOutputLine(FILE *ptr, int time, int process_id, char *state, int arr, int total, int reamain, int wait, int TA, float WTA);
 void TerminateCurrentProcess();
+void StopCurrentProcess();
+void ResumeCurrentProcess();
+void StartCurrentProcess();
 int main(int argc, char *argv[])
 {
     ptr = fopen("scheduler.log", "w");
@@ -117,7 +120,6 @@ int main(int argc, char *argv[])
             processTable[message_recieved.m_process.id - 1].priority = message_recieved.m_process.priority;
             processTable[message_recieved.m_process.id - 1].execTime = message_recieved.m_process.runTime;
             processTable[message_recieved.m_process.id - 1].ID = -1;
-            processTable[message_recieved.m_process.id - 1].cumulativeTime = 0;
 
             strcpy(processTable[message_recieved.m_process.id - 1].state, "ready");
             processTable[message_recieved.m_process.id - 1].remaingTime = message_recieved.m_process.runTime; // initail remaining Time
@@ -198,14 +200,7 @@ int main(int argc, char *argv[])
                     else
                     {                                                               // parent
                         cpuFree = false;                                            // now the cpu is busy
-                        strcpy(processTable[currentProc->id - 1].state, "started"); // set the state running
-                        processTable[currentProc->id - 1].ID = pid;                 // set the actual pid
-                        processTable[currentProc->id - 1].startTime = getClk();     // set the start time of the process with the actual time
-                        processTable[currentProc->id - 1].responseTime = processTable[currentProc->id - 1].startTime - currentProc->arrivalTime;
-                        processTable[currentProc->id - 1].totWaitTime = processTable[currentProc->id - 1].responseTime;
-                        // setting the response and the waiting time with the same value as it's non-preemptive
-                        WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1].state, currentProc->arrivalTime,
-                                        currentProc->runTime, processTable[currentProc->id - 1].remaingTime, processTable[currentProc->id - 1].totWaitTime, 0, 0);
+                        StartCurrentProcess(pid);
                     }
                 }
             }
@@ -224,10 +219,7 @@ int main(int argc, char *argv[])
                     {
                         cpuFree = true; // if the signal is stopped ...excute another one
                         printf("Stopping, id: %d\n", currentProc->priority);
-                        kill(processTable[currentProc->id - 1].ID, SIGSTOP);        // to stop the running process
-                        strcpy(processTable[currentProc->id - 1].state, "stopped"); // set the state running
-                        WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1].state, currentProc->arrivalTime,
-                                        currentProc->runTime, processTable[currentProc->id - 1].remaingTime, processTable[currentProc->id - 1].totWaitTime, 0, 0);
+                        StopCurrentProcess();
                         // processTable[currrentProc.id - 1].cumulativeTime += Quantum;
                         printf("enqueue, id: %d\n", currentProc->id);
                         enqueue(&q1, *currentProc);
@@ -277,23 +269,13 @@ int main(int argc, char *argv[])
                             else
                             { // Parent
                                 printf("Start, id: %d\n", currentProc->id);
-                                strcpy(processTable[currentProc->id - 1].state, "started"); // set the state running
-                                processTable[currentProc->id - 1].ID = pid;                 // set the actual pid
-                                processTable[currentProc->id - 1].startTime = getClk();     // set the start time of the process with the actual time
-                                processTable[currentProc->id - 1].responseTime = processTable[currentProc->id - 1].startTime - currentProc->arrivalTime;
-                                processTable[currentProc->id - 1].totWaitTime = processTable[currentProc->id - 1].responseTime; // initialised here and will be increased later
-                                // setting the response and the waiting time with the same value as it's non-preemptive
-                                WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1].state, currentProc->arrivalTime,
-                                                currentProc->runTime, processTable[currentProc->id - 1].remaingTime, processTable[currentProc->id - 1].totWaitTime, 0, 0);
+                               StartCurrentProcess(pid);
                             }
                         }
                         else // if the process has been in the queue before
                         {
                             printf("resume, id: %d\n", currentProc->id);
-                            strcpy(processTable[currentProc->id - 1].state, "resumed"); // set the state running
-                            WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1].state, currentProc->arrivalTime,
-                                            currentProc->runTime, processTable[currentProc->id - 1].remaingTime, processTable[currentProc->id - 1].totWaitTime, 0, 0);
-                            kill(processTable[currentProc->id - 1].ID, SIGCONT);
+                            ResumeCurrentProcess();
                         }
                         cpuFree = false; // now we are running a process
                     }
@@ -338,10 +320,7 @@ int main(int argc, char *argv[])
                     if (currentProc != NULL) // if there is a running process (first time no process is running)
                     {
                         printf("Stopping, id: %d\n", currentProc->priority);
-                        kill(processTable[currentProc->id - 1].ID, SIGSTOP);        // to stop the running process
-                        strcpy(processTable[currentProc->id - 1].state, "stopped"); // set the state running
-                        WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1].state, currentProc->arrivalTime,
-                                        currentProc->runTime, processTable[currentProc->id - 1].remaingTime, processTable[currentProc->id - 1].totWaitTime, 0, 0);
+                       StopCurrentProcess();
                         // processTable[currrentProc.id - 1].cumulativeTime += Quantum;
                         printf("enqueue, id: %d\n", currentProc->id);
                         enQueueCircularQueue(&q2, currentProc);
@@ -375,23 +354,13 @@ int main(int argc, char *argv[])
                             else
                             {
                                 printf("Start, id: %d\n", currentProc->id);
-                                strcpy(processTable[currentProc->id - 1].state, "started"); // set the state running
-                                processTable[currentProc->id - 1].ID = pid;                 // set the actual pid
-                                processTable[currentProc->id - 1].startTime = getClk();     // set the start time of the process with the actual time
-                                processTable[currentProc->id - 1].responseTime = processTable[currentProc->id - 1].startTime - currentProc->arrivalTime;
-                                processTable[currentProc->id - 1].totWaitTime = processTable[currentProc->id - 1].responseTime; // initialised here and will be increased later
-                                // setting the response and the waiting time with the same value as it's non-preemptive
-                                WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1].state, currentProc->arrivalTime,
-                                                currentProc->runTime, processTable[currentProc->id - 1].remaingTime, processTable[currentProc->id - 1].totWaitTime, 0, 0);
+                                StartCurrentProcess(pid);
                             }
                         }
                         else
                         {
                             printf("resume, id: %d\n", currentProc->id);
-                            strcpy(processTable[currentProc->id - 1].state, "resumed"); // set the state running
-                            WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1].state, currentProc->arrivalTime,
-                                            currentProc->runTime, processTable[currentProc->id - 1].remaingTime, processTable[currentProc->id - 1].totWaitTime, 0, 0);
-                            kill(processTable[currentProc->id - 1].ID, SIGCONT);
+                            ResumeCurrentProcess();
                         }
                     }
                     else
@@ -421,6 +390,7 @@ int main(int argc, char *argv[])
     destroyClk(true);
     return 0;
 }
+
 
 void processTerminate(int sigID)
 {
@@ -459,6 +429,31 @@ void WriteFinalOutput(int cpuUtil, int AvgWTA, int AvgWait, int StdWTA)
     fflush(ptr);
 }
 
+void ResumeCurrentProcess()
+{
+    strcpy(processTable[currentProc->id - 1].state, "resumed"); // set the state running
+    WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1].state, currentProc->arrivalTime,
+                    currentProc->runTime, processTable[currentProc->id - 1].remaingTime, processTable[currentProc->id - 1].totWaitTime, 0, 0);
+    kill(processTable[currentProc->id - 1].ID, SIGCONT);
+}
+void StopCurrentProcess()
+{
+    kill(processTable[currentProc->id - 1].ID, SIGSTOP);        // to stop the running process
+    strcpy(processTable[currentProc->id - 1].state, "stopped"); // set the state running
+    WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1].state, currentProc->arrivalTime,
+                    currentProc->runTime, processTable[currentProc->id - 1].remaingTime, processTable[currentProc->id - 1].totWaitTime, 0, 0);
+}
+void StartCurrentProcess(int pid)
+{
+    strcpy(processTable[currentProc->id - 1].state, "started"); // set the state running
+    processTable[currentProc->id - 1].ID = pid;                 // set the actual pid
+    processTable[currentProc->id - 1].startTime = getClk();     // set the start time of the process with the actual time
+    processTable[currentProc->id - 1].responseTime = processTable[currentProc->id - 1].startTime - currentProc->arrivalTime;
+    processTable[currentProc->id - 1].totWaitTime = processTable[currentProc->id - 1].responseTime; // initialised here and will be increased later
+    // setting the response and the waiting time with the same value as it's non-preemptive
+    WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1].state, currentProc->arrivalTime,
+                    currentProc->runTime, processTable[currentProc->id - 1].remaingTime, processTable[currentProc->id - 1].totWaitTime, 0, 0);
+}
 // float StandardDeviation(float data[], int size)
 // {
 //     float sum = 0.0, mean, SD = 0.0;
