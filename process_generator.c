@@ -46,6 +46,7 @@ int main(int argc, char *argv[])
         total_runtime += processes[k].runTime;
         k++;
     }
+    total_runtime += processes[0].arrivalTime;
     fclose(ptr);
     // 2. Ask the user for the chosen scheduling algorithm and its parameters, if there are any.
     printf("Choose the scheduling algorithm\n");
@@ -92,7 +93,7 @@ int main(int argc, char *argv[])
     msgq_id = msgget(MSGKEY, 0666 | IPC_CREAT); // create message queue and return id
     int send_val;
     struct my_msgbuff message_send;
-    while (curr_time <= total_runtime + 5)
+    while (curr_time <= total_runtime)
     {
         //printf("current time : %d\n", curr_time);
         for (int i = 0; i < processes_number; i++)
