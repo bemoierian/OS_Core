@@ -76,9 +76,11 @@ int main(int argc, char *argv[])
     {
         char algo[2];
         char Q[2];
+        char PsNumebr[2];
         char sendedSize[2]; // send the max of process
         sprintf(sendedSize, "%d", q_size);
         sprintf(Q, "%d", Quantum);
+        sprintf(PsNumebr, "%d", processes_number);
         sprintf(algo, "%d", sch_algo); // converts the int to string to sended in the arguments of the process
         execl("scheduler.out", "scheduler", algo, sendedSize,Q, NULL);
     }
