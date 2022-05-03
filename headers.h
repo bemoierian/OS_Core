@@ -80,14 +80,14 @@ union Semun
 void down(int sem)
 {
     struct sembuf p_op;
-    //index of the semaphore, here we have 1 semaphore, then index is 0
+    // index of the semaphore, here we have 1 semaphore, then index is 0
     p_op.sem_num = 0;
     //-ve means down operation, we want to obtain the resource
     p_op.sem_op = -1;
     p_op.sem_flg = !IPC_NOWAIT;
-    //param1: semaphore id
-    //param2: pointer to array of operations
-    //param3: number of operations inside array
+    // param1: semaphore id
+    // param2: pointer to array of operations
+    // param3: number of operations inside array
     if (semop(sem, &p_op, 1) == -1)
     {
         perror("Error in down()");
@@ -168,7 +168,22 @@ bool enqueue(PriorityQueue *q, Process newP)
     }
     return false;
 }
-
+// Enqueue for SRTN
+bool enqueueForSTRN(PriorityQueue *q, Process newP)
+{
+    if (!isPriorityQueueFull(q))
+    {
+        // Insert the element
+        q->pr[q->size].id = newP.id;
+        q->pr[q->size].priority = newP.runTime; // remaining time in initially with the runtime
+        q->pr[q->size].arrivalTime = newP.arrivalTime;
+        q->pr[q->size].runTime = newP.runTime;
+        // Increase the size
+        q->size++;
+        return true;
+    }
+    return false;
+}
 // Function to check the top element
 int peek(PriorityQueue *q, Process *it)
 {
@@ -260,7 +275,7 @@ bool isCircularQueueEmpty(CircularQueue *q)
 }
 
 // Adding an element
-bool enQueueCircularQueue(CircularQueue *q, Process* element)
+bool enQueueCircularQueue(CircularQueue *q, Process *element)
 {
     if (element != NULL)
     {
@@ -276,7 +291,7 @@ bool enQueueCircularQueue(CircularQueue *q, Process* element)
             // printf("\n Inserted process ID -> %d", element.id);
         }
         return true;
-    }  
+    }
     return false;
 }
 

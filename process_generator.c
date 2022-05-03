@@ -55,8 +55,8 @@ int main(int argc, char *argv[])
     printf("Round Robin (RR) : 3\n");
     int sch_algo;
     scanf("%d", &sch_algo);
-    int Quantum=0;
-    if(sch_algo == 3)
+    int Quantum = 0;
+    if (sch_algo == 3)
     {
         printf("Please enter the quatum of RR\n");
         scanf("%d", &Quantum);
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
         sprintf(Q, "%d", Quantum);
         sprintf(PsNumebr, "%d", processes_number);
         sprintf(algo, "%d", sch_algo); // converts the int to string to sended in the arguments of the process
-        execl("scheduler.out", "scheduler", algo, sendedSize,Q, NULL);
+        execl("scheduler.out", "scheduler", algo, sendedSize, Q, NULL);
     }
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
     struct my_msgbuff message_send;
     while (curr_time <= total_runtime)
     {
-        //printf("current time : %d\n", curr_time);
+        // printf("current time : %d\n", curr_time);
         for (int i = 0; i < processes_number; i++)
         {
             // if one process come at a time : then sleep 1 sec to avoid redundent clock reading
@@ -115,21 +115,21 @@ int main(int argc, char *argv[])
             }
         }
 
-        //sleep(1);
+        // sleep(1);
         curr_time = getClk();
     }
     printf("process generator destroying clock\n");
 
     free(processes);
     msgctl(msgq_id, IPC_RMID, (struct msqid_ds *)0);
-    //DESTROY RESOURCES
+    // DESTROY RESOURCES
     int ps_shmid = shmget(PS_SHM_KEY, 4, IPC_CREAT | 0644);
     if (ps_shmid == -1)
     {
         perror("Process_generator: error in shared memory create\n");
         exit(-1);
     }
-    //attach shared memory to process
+    // attach shared memory to process
     int *ps_shmaddr = (int *)shmat(ps_shmid, (void *)0, 0);
     if ((long)ps_shmaddr == -1)
     {
@@ -142,11 +142,11 @@ int main(int argc, char *argv[])
         perror("Error in create sem");
         exit(-1);
     }
-    //deattach shared memory
+    // deattach shared memory
     shmdt(ps_shmaddr);
-    //destroy shared memory
+    // destroy shared memory
     shmctl(ps_shmid, IPC_RMID, (struct shmid_ds *)0);
-    //destory semaphore
+    // destory semaphore
     semctl(sem1, 0, IPC_RMID, (union Semun)0);
     // 7. Clear clock resources
     destroyClk(true);
@@ -159,34 +159,3 @@ void clearResources(int signum)
     msgctl(msgq_id, IPC_RMID, (struct msqid_ds *)0);
     destroyClk(true);
 }
-
-// void InitiateAlgorithm(int sch_algo,int q_size)
-// {
-//     switch (sch_algo)
-//     {
-//     case 1:
-//         //HPF();
-//         PriorityQueue *q;
-//         createPriorityQ(q, q_size);
-//         break;
-
-//     case 2:
-//         //SRTN();
-//         PriorityQueue *q;
-//         createPriorityQ(q, q_size);
-//         break;
-
-//     case 3:
-//         // RR();
-//         CircularQueue *q;
-//         createCircularQueue(q, q_size);
-//         // q->pr[0].arrivalTime;
-//         // createCircularQueue(q, s);
-//         // read the file
-//         // enQueueCircularQueue(q, )
-//         break;
-
-//     default:
-//         break;
-//     }
-// }
