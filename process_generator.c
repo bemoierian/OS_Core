@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
     msgq_id = msgget(MSGKEY, 0666 | IPC_CREAT); // create message queue and return id
     int send_val;
     struct my_msgbuff message_send;
-    while (curr_time <= total_runtime)
+    while (curr_time <= total_runtime + 5)
     {
         //printf("current time : %d\n", curr_time);
         for (int i = 0; i < processes_number; i++)
@@ -119,6 +119,32 @@ int main(int argc, char *argv[])
 
     free(processes);
     msgctl(msgq_id, IPC_RMID, (struct msqid_ds *)0);
+    //DESTROY RESOURCES
+    int ps_shmid = shmget(PS_SHM_KEY, 4, IPC_CREAT | 0644);
+    if (ps_shmid == -1)
+    {
+        perror("Process_generator: error in shared memory create\n");
+        exit(-1);
+    }
+    //attach shared memory to process
+    int *ps_shmaddr = (int *)shmat(ps_shmid, (void *)0, 0);
+    if ((long)ps_shmaddr == -1)
+    {
+        perror("Process_generator: error in attach\n");
+        exit(-1);
+    }
+    int sem1 = semget(SEM1_KEY, 1, 0666 | IPC_CREAT);
+    if (sem1 == -1)
+    {
+        perror("Error in create sem");
+        exit(-1);
+    }
+    //deattach shared memory
+    shmdt(ps_shmaddr);
+    //destroy shared memory
+    shmctl(ps_shmid, IPC_RMID, (struct shmid_ds *)0);
+    //destory semaphore
+    semctl(sem1, 0, IPC_RMID, (union Semun)0);
     // 7. Clear clock resources
     destroyClk(true);
 }

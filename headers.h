@@ -19,6 +19,8 @@ typedef short bool;
 
 #define SHKEY 300
 #define MSGKEY 301
+#define PS_SHM_KEY 402
+#define SEM1_KEY 450
 
 ///==============================
 // don't mess with this variable//
@@ -63,6 +65,51 @@ void destroyClk(bool terminateAll)
         killpg(getpgrp(), SIGINT);
     }
 }
+
+//--------------SEMAPHORES---------------
+union Semun
+{
+    int val;               /* value for SETVAL */
+    struct semid_ds *buf;  /* buffer for IPC_STAT & IPC_SET */
+    ushort *array;         /* array for GETALL & SETALL */
+    struct seminfo *__buf; /* buffer for IPC_INFO */
+    void *__pad;
+};
+
+void down(int sem)
+{
+    struct sembuf p_op;
+    //index of the semaphore, here we have 1 semaphore, then index is 0
+    p_op.sem_num = 0;
+    //-ve means down operation, we want to obtain the resource
+    p_op.sem_op = -1;
+    p_op.sem_flg = !IPC_NOWAIT;
+    //param1: semaphore id
+    //param2: pointer to array of operations
+    //param3: number of operations inside array
+    if (semop(sem, &p_op, 1) == -1)
+    {
+        perror("Error in down()");
+        exit(-1);
+    }
+}
+
+void up(int sem)
+{
+    struct sembuf v_op;
+
+    v_op.sem_num = 0;
+    //+ve means up operation, we want to release the resource
+    v_op.sem_op = 1;
+    v_op.sem_flg = !IPC_NOWAIT;
+
+    if (semop(sem, &v_op, 1) == -1)
+    {
+        perror("Error in up()");
+        exit(-1);
+    }
+}
+
 // struct holds the process data
 typedef struct processData
 {
@@ -105,7 +152,7 @@ bool isPriorityQueueFull(PriorityQueue *q)
 }
 // Function to insert a new element
 // into priority queue
-void enqueue(PriorityQueue *q, Process newP)
+bool enqueue(PriorityQueue *q, Process newP)
 {
     if (!isPriorityQueueFull(q))
     {
@@ -116,7 +163,9 @@ void enqueue(PriorityQueue *q, Process newP)
         q->pr[q->size].runTime = newP.runTime;
         // Increase the size
         q->size++;
+        return true;
     }
+    return false;
 }
 
 // Function to check the top element
@@ -210,16 +259,24 @@ bool isCircularQueueEmpty(CircularQueue *q)
 }
 
 // Adding an element
-void enQueueCircularQueue(CircularQueue *q, Process element)
+bool enQueueCircularQueue(CircularQueue *q, Process* element)
 {
-    if (!isCircularQueueFull(q))
+    if (element != NULL)
     {
-        if (q->front == -1)
-            q->front = 0;
-        q->rear = (q->rear + 1) % q->size;
-        q->items[q->rear] = element;
-        // printf("\n Inserted process ID -> %d", element.id);
-    }
+        if (!isCircularQueueFull(q))
+        {
+            if (q->front == -1)
+                q->front = 0;
+            q->rear = (q->rear + 1) % q->size;
+            q->items[q->rear].arrivalTime = element->arrivalTime;
+            q->items[q->rear].id = element->id;
+            q->items[q->rear].priority = element->priority;
+            q->items[q->rear].runTime = element->runTime;
+            // printf("\n Inserted process ID -> %d", element.id);
+        }
+        return true;
+    }  
+    return false;
 }
 
 // Removing an element
@@ -231,6 +288,7 @@ bool deQueueCircularQueue(CircularQueue *q, Process *element)
         element->id = q->items[q->front].id;
         element->priority = q->items[q->front].priority;
         element->runTime = q->items[q->front].runTime;
+        element->arrivalTime = q->items[q->front].arrivalTime;
         if (q->front == q->rear)
         {
             q->front = -1;
