@@ -168,22 +168,22 @@ bool enqueue(PriorityQueue *q, Process newP)
     }
     return false;
 }
-// Enqueue for SRTN
-bool enqueueForSTRN(PriorityQueue *q, Process newP)
-{
-    if (!isPriorityQueueFull(q))
-    {
-        // Insert the element
-        q->pr[q->size].id = newP.id;
-        q->pr[q->size].priority = newP.runTime; // remaining time in initially with the runtime
-        q->pr[q->size].arrivalTime = newP.arrivalTime;
-        q->pr[q->size].runTime = newP.runTime;
-        // Increase the size
-        q->size++;
-        return true;
-    }
-    return false;
-}
+// // Enqueue for SRTN
+// bool enqueueForSTRN(PriorityQueue *q, Process newP)
+// {
+//     if (!isPriorityQueueFull(q))
+//     {
+//         // Insert the element
+//         q->pr[q->size].id = newP.id;
+//         q->pr[q->size].priority = newP.runTime; // remaining time in initially with the runtime
+//         q->pr[q->size].arrivalTime = newP.arrivalTime;
+//         q->pr[q->size].runTime = newP.runTime;
+//         // Increase the size
+//         q->size++;
+//         return true;
+//     }
+//     return false;
+// }
 // Function to check the top element
 int peek(PriorityQueue *q, Process *it)
 {
@@ -249,19 +249,21 @@ typedef struct circQueue
     int size;
     int front;
     int rear;
+    int maxSize;
 } CircularQueue;
 
 void createCircularQueue(CircularQueue *q, int s)
 {
+    q->size = 0;
     q->front = -1;
     q->rear = -1;
-    q->size = s; // max size in the circular queue
-    q->items = (Process *)malloc(q->size * sizeof(Process));
+    q->maxSize = s; // max size in the circular queue
+    q->items = (Process *)malloc(q->maxSize * sizeof(Process));
 }
 // Check if the queue is full
 bool isCircularQueueFull(CircularQueue *q)
 {
-    if ((q->front == q->rear + 1) || (q->front == 0 && q->rear == q->size - 1))
+    if ((q->front == q->rear + 1) || (q->front == 0 && q->rear == q->maxSize - 1))
         return true;
     return false;
 }
@@ -283,13 +285,14 @@ bool enQueueCircularQueue(CircularQueue *q, Process *element)
         {
             if (q->front == -1)
                 q->front = 0;
-            q->rear = (q->rear + 1) % q->size;
+            q->rear = (q->rear + 1) % q->maxSize;
             q->items[q->rear].arrivalTime = element->arrivalTime;
             q->items[q->rear].id = element->id;
             q->items[q->rear].priority = element->priority;
             q->items[q->rear].runTime = element->runTime;
             // printf("\n Inserted process ID -> %d", element.id);
         }
+        q->size++;
         return true;
     }
     return false;
@@ -314,9 +317,10 @@ bool deQueueCircularQueue(CircularQueue *q, Process *element)
         // queue after dequeing it. ?
         else
         {
-            q->front = (q->front + 1) % q->size;
+            q->front = (q->front + 1) % q->maxSize;
         }
         // printf("\n Deleted element -> %d \n", element->id);
+        q->size--;
         return true;
     }
     return false;

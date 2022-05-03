@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
         sprintf(Q, "%d", Quantum);
         sprintf(PsNumebr, "%d", processes_number);
         sprintf(algo, "%d", sch_algo); // converts the int to string to sended in the arguments of the process
-        execl("scheduler.out", "scheduler", algo, sendedSize, Q, NULL);
+        execl("scheduler.out", "scheduler", algo, sendedSize, Q, PsNumebr, NULL);
     }
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
     msgq_id = msgget(MSGKEY, 0666 | IPC_CREAT); // create message queue and return id
     int send_val;
     struct my_msgbuff message_send;
-    while (curr_time <= total_runtime)
+    while (curr_time <= total_runtime + 15)
     {
         // printf("current time : %d\n", curr_time);
         for (int i = 0; i < processes_number; i++)
