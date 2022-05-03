@@ -16,17 +16,22 @@ typedef struct processControlBlock
 bool cpuFree = true;         // indicates that the cpu is free to excute a process
 Process *currentProc = NULL; // the currently running process
 PCB *processTable;           // the process table of the OS
-float *AvgWTA;
+float *WTA;
+float *Wait;
 /////////////////////
 FILE *ptr; // pointer to the output file
 
 // Functions Declarations
 void processTerminate(int sigID);
 void WriteOutputLine(FILE *ptr, int time, int process_id, char *state, int arr, int total, int reamain, int wait, int TA, float WTA);
+//void WriteFinalOutput(float cpuUtil, float AvgWTA, float AvgWait, float StdWTA);
+//float StandardDeviation(float data[], int size);
+//float AVG(float data[], int size);
 void TerminateCurrentProcess();
 void StopCurrentProcess();
 void ResumeCurrentProcess();
 void StartCurrentProcess();
+
 int main(int argc, char *argv[])
 {
     ptr = fopen("scheduler.log", "w");
@@ -38,10 +43,12 @@ int main(int argc, char *argv[])
     int q_size = atoi(argv[2]);            // max no of processes
     int Quantum = atoi(argv[3]);           // Quantum for RR
     int numberOfProcesses = atoi(argv[4]); // max no of processes
+    int total_runtime = atoi(argv[5]); // total runtime of processes
     // printf("Schedule algorithm : %d\n", sch_algo);
     // the process table of the OS
     processTable = (PCB *)malloc(sizeof(PCB) * q_size);
-    AvgWTA = (float *)malloc(sizeof(float) * numberOfProcesses);
+    WTA = (float *)malloc(sizeof(float) * numberOfProcesses);
+    Wait = (float *)malloc(sizeof(float) * numberOfProcesses);
     // the queues used in scheduling depends on the type of the algorithm
     PriorityQueue q1;
     CircularQueue q2;
@@ -105,7 +112,7 @@ int main(int argc, char *argv[])
     // so that we enter round robin without waiting for the quantum
     bool firstTime = false;
     int prevArr = 0;
-    while (1)
+    while (getClk() < total_runtime + 1) // this replaces the while(1) by mark to make the scheduler terminate upon finishing all processes to continue after the while loop and terminate itself (process generator does not treminate schedular)
     {
         rc = msgctl(msgq_id, IPC_STAT, &buf); // check if there is a comming process
         num_messages = buf.msg_qnum;
@@ -235,7 +242,6 @@ int main(int argc, char *argv[])
                     }
                 }
                 firstTime = false;
-
                 prevClk = currClk;
                 if (cpuFree)
                 { // if there is no currently a running process
@@ -308,8 +314,6 @@ int main(int argc, char *argv[])
                     *ps_shmaddr = processTable[currentProc->id - 1].remaingTime;
                     // sem =remaining
                     down(sem1);
-                    // if(*ps_shmaddr == 0)
-                    //     sleep(0.01);
                 }
 
                 if (getClk() == Quantum + quantumStartTime || currentProc == NULL)
@@ -317,10 +321,12 @@ int main(int argc, char *argv[])
                     quantumStartTime = getClk();
                     printf("entered mod\n");
                     // currProcessFinished = false;
+                    if(isCircularQueueEmpty(&q2)) // this was added by mark to solve the problem of stop-resume-stop-resume
+                        continue;
                     if (currentProc != NULL) // if there is a running process (first time no process is running)
                     {
                         printf("Stopping, id: %d\n", currentProc->priority);
-                       StopCurrentProcess();
+                        StopCurrentProcess();
                         // processTable[currrentProc.id - 1].cumulativeTime += Quantum;
                         printf("enqueue, id: %d\n", currentProc->id);
                         enQueueCircularQueue(&q2, currentProc);
@@ -378,7 +384,11 @@ int main(int argc, char *argv[])
     printf("scheduler is finishing");
     fclose(ptr); // close the file at the end
     ptr = fopen("scheduler.perf", "w");
-    // WriteFinalOutput();
+    float CPUutilisation = 1;
+    //float AvgWTA = AVG(WTA,numberOfProcesses);
+    //float AvgWait = AVG(Wait,numberOfProcesses);
+    //float StdWTA = StandardDeviation(WTA,numberOfProcesses);
+    //WriteFinalOutput(CPUutilisation,AvgWTA,AvgWait,StdWTA);
     fclose(ptr); // close the file at the end
     // deattach shared memory
     shmdt(ps_shmaddr);
@@ -392,16 +402,25 @@ int main(int argc, char *argv[])
 }
 
 
+
+
+
+
+
+
+
+//----------------------------------------------------Utility functions-------------------------------------------------
 void processTerminate(int sigID)
 {
     cpuFree = true;
     strcpy(processTable[currentProc->id - 1].state, "finished");
 
     int TA = getClk() - processTable[currentProc->id - 1].startTime;
-    AvgWTA[currentProc->id - 1] = (float)TA / processTable[currentProc->id - 1].execTime; // Array of WTA of each process
+    WTA[currentProc->id - 1] = (float)TA / processTable[currentProc->id - 1].execTime; // Array of WTA of each process
+    Wait[currentProc->id - 1] = processTable[currentProc->id - 1].totWaitTime; // Array of WTA of each process
     // processTable[currrentProc.id - 1].totWaitTime = TA - processTable[currrentProc.id - 1].execTime;
     WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1].state, currentProc->arrivalTime,
-                    currentProc->runTime, processTable[currentProc->id - 1].remaingTime, processTable[currentProc->id - 1].totWaitTime, TA, AvgWTA[currentProc->id - 1]);
+                    currentProc->runTime, processTable[currentProc->id - 1].remaingTime, processTable[currentProc->id - 1].totWaitTime, TA, WTA[currentProc->id - 1]);
     TerminateCurrentProcess();
     signal(SIGUSR1, processTerminate); // attach the function to SIGUSR1
 }
@@ -423,9 +442,9 @@ void WriteOutputLine(FILE *ptr, int time, int process_id, char *state, int arr, 
     fflush(ptr);
 }
 
-void WriteFinalOutput(int cpuUtil, int AvgWTA, int AvgWait, int StdWTA)
+void WriteFinalOutput(float cpuUtil, float AvgWTA, float AvgWait, float StdWTA)
 {
-    fprintf(ptr, "CPU utilisation = %d\nAvg WTA = = %d\nAvg Waiting = %d\nStd WTA = %d\n", cpuUtil, AvgWTA, AvgWait, StdWTA);
+    fprintf(ptr, "CPU utilisation = %f %c\nAvg WTA = = %f\nAvg Waiting = %f\nStd WTA = %f\n", cpuUtil*100,'%', AvgWTA, AvgWait, StdWTA);
     fflush(ptr);
 }
 
@@ -454,6 +473,8 @@ void StartCurrentProcess(int pid)
     WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1].state, currentProc->arrivalTime,
                     currentProc->runTime, processTable[currentProc->id - 1].remaingTime, processTable[currentProc->id - 1].totWaitTime, 0, 0);
 }
+
+
 // float StandardDeviation(float data[], int size)
 // {
 //     float sum = 0.0, mean, SD = 0.0;
@@ -465,7 +486,7 @@ void StartCurrentProcess(int pid)
 //     mean = sum / size;
 //     for (i = 0; i < size; ++i)
 //     {
-//         SD += pow(data[i] - mean, 2);
+//         SD += (data[i] - mean)*(data[i] - mean);
 //     }
 //     return sqrt(SD / size);
 // }
