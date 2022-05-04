@@ -134,12 +134,12 @@ int main(int argc, char *argv[])
             // enqueue the new process
             if (sch_algo == 1)
             { // for HPF
-                printf("enqueued at time %d\n  proc id = %d \n", getClk(), message_recieved.m_process.id);
+                printf("enqueued at time %d  proc id = %d \n", getClk(), message_recieved.m_process.id);
                 enqueue(&q1, message_recieved.m_process);
             }
             else if (sch_algo == 2) // SRTF
             {
-                printf("enqueued at time %d\n  proc id = %d \n", getClk(), message_recieved.m_process.id);
+                printf("enqueued at time %d  proc id = %d \n", getClk(), message_recieved.m_process.id);
                 if (isPriorityQueueEmpty(&q1))
                 {
                     firstTime = true; // to know if this process is the first process entered the Q
@@ -225,7 +225,7 @@ int main(int argc, char *argv[])
                     if (peek(&q1, &pTemp) != -1 && processTable[pTemp.id - 1].remaingTime < processTable[currentProc->id - 1].remaingTime)
                     {
                         cpuFree = true; // if the signal is stopped ...excute another one
-                        printf("Stopping, id: %d\n", currentProc->priority);
+                        //printf("Stopping, id: %d\n", currentProc->priority);
                         StopCurrentProcess();
                         // processTable[currrentProc.id - 1].cumulativeTime += Quantum;
                         printf("enqueue, id: %d\n", currentProc->id);
@@ -241,19 +241,19 @@ int main(int argc, char *argv[])
                         down(sem1); // sem to sych the remaining time between the scheduler and the process
                     }
                 }
-                firstTime = false;
+                
                 prevClk = currClk;
                 if (cpuFree)
-                { // if there is no currently a running process
+                {   // if there is no currently a running process
                     currentProc = (Process *)malloc(sizeof(Process));
-
+                    // Mark : the problem here is that at time 3 process 1 started before process 3 was enqueued so we need to wait until process 3 is enqueued 
                     bool flag = dequeue(&q1, currentProc);
-
                     if (flag) // if there is a process in the Q
                     {
-                        printf("entered flag\n");
+                         printf("dequeue, id: %d\n", currentProc->id);
+                        //printf("entered flag\n");
                         // cpuFree = false; //??
-                        printf("PS %d, remaining time %d\n\n", currentProc->id, processTable[currentProc->id - 1].remaingTime);
+                        //printf("PS %d, remaining time %d\n\n", currentProc->id, processTable[currentProc->id - 1].remaingTime);
                         // Set remaining time in shared memory
                         *ps_shmaddr = processTable[currentProc->id - 1].remaingTime;
                         // Set remaining time in semaphore
@@ -275,12 +275,12 @@ int main(int argc, char *argv[])
                             else
                             { // Parent
                                 printf("Start, id: %d\n", currentProc->id);
-                               StartCurrentProcess(pid);
+                                StartCurrentProcess(pid);
                             }
                         }
                         else // if the process has been in the queue before
                         {
-                            printf("resume, id: %d\n", currentProc->id);
+                            printf("Resume, id: %d\n", currentProc->id);
                             ResumeCurrentProcess();
                         }
                         cpuFree = false; // now we are running a process
@@ -291,6 +291,7 @@ int main(int argc, char *argv[])
                         currentProc = NULL;
                     }
                 }
+                firstTime = false;
             }
             break;
         case 3:;
