@@ -202,16 +202,19 @@ int peek(PriorityQueue *q, Process *it)
             highestPriority = q->pr[i].priority;
             ind = i;
         }
-        else if (highestPriority > q->pr[i].priority)
+        else if (highestPriority > q->pr[i].priority) // for first time
         {
             highestPriority = q->pr[i].priority;
             ind = i;
         }
     }
-    it->priority = q->pr[ind].priority;
-    it->id = q->pr[ind].id;
-    it->arrivalTime = q->pr[ind].arrivalTime;
-    it->runTime = q->pr[ind].runTime;
+    if (ind != -1)
+    {
+        it->priority = q->pr[ind].priority;
+        it->id = q->pr[ind].id;
+        it->arrivalTime = q->pr[ind].arrivalTime;
+        it->runTime = q->pr[ind].runTime;
+    }
     // Return position of the element
     return ind;
 }

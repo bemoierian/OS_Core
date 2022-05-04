@@ -4,7 +4,7 @@ void clearResources(int);
 
 int msgq_id;
 Process *processes;
-
+int pid1, pid2;
 int main(int argc, char *argv[])
 {
     signal(SIGINT, clearResources);
@@ -46,14 +46,14 @@ int main(int argc, char *argv[])
         total_runtime += processes[k].runTime;
         k++;
     }
-    //calculating total runtime (including waiting time )
+    // calculating total runtime (including waiting time )
     total_runtime += processes[0].arrivalTime;
     int start = processes[0].arrivalTime;
     for (int i = 1; i < processes_number; i++)
     {
-        if (start + processes[i-1].runTime <  processes[i].arrivalTime)
+        if (start + processes[i - 1].runTime < processes[i].arrivalTime)
         {
-            total_runtime += processes[i].arrivalTime - (start + processes[i-1].runTime);
+            total_runtime += processes[i].arrivalTime - (start + processes[i - 1].runTime);
         }
         start += processes[i].runTime;
     }
@@ -76,12 +76,12 @@ int main(int argc, char *argv[])
     scanf("%d", &q_size);
     printf("\n");
     // 3. Initiate and create the scheduler and clock processes.
-    int pid1 = fork(); // fork for the clk
+    pid1 = fork(); // fork for the clk
     if (pid1 == 0)
     {
         execl("clk.out", "clk", NULL);
     }
-    int pid2 = fork(); // fork for the scheduler
+    pid2 = fork(); // fork for the scheduler
     if (pid2 == 0)
     {
         char algo[2];
@@ -94,46 +94,46 @@ int main(int argc, char *argv[])
         sprintf(PsNumebr, "%d", processes_number);
         sprintf(RUN, "%d", total_runtime);
         sprintf(algo, "%d", sch_algo); // converts the int to string to sended in the arguments of the process
-        execl("scheduler.out", "scheduler", algo, sendedSize, Q, PsNumebr,RUN, NULL);
+        execl("scheduler.out", "scheduler", algo, sendedSize, Q, PsNumebr, RUN, NULL);
     }
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
 
     // To get time use this
-    int curr_time = getClk();
+    int curr_time;
     printf("current time is %d\n", curr_time);
     printf("total runtime is %d\n", total_runtime);
     // TODO Generation Main Loop
     msgq_id = msgget(MSGKEY, 0666 | IPC_CREAT); // create message queue and return id
     int send_val;
     struct my_msgbuff message_send;
-    while (curr_time <= total_runtime + 1)
+    int i = 0;
+    while (1)
     {
-        // printf("current time : %d\n", curr_time);
-        for (int i = 0; i < processes_number; i++)
+        curr_time = getClk();
+        // if one process come at a time : then sleep 1 sec to avoid redundent clock reading
+        // 5. Create a data structure for processes and provide it with its parameters.
+        // 6. Send the information to the scheduler at the appropriate time.
+        if (curr_time == processes[i].arrivalTime)
         {
-            // if one process come at a time : then sleep 1 sec to avoid redundent clock reading
-            // 5. Create a data structure for processes and provide it with its parameters.
-            // 6. Send the information to the scheduler at the appropriate time.
-            if (curr_time == processes[i].arrivalTime)
-            {
-                // send to scheduler
-                message_send.m_process = processes[i];
-                message_send.mtype = 7;
-                send_val = msgsnd(msgq_id, &message_send, sizeof(message_send.m_process), !IPC_NOWAIT);
-                if (send_val == -1)
-                    perror("Error: process_generator failed to send the input message \n");
-                processes[i].arrivalTime = -1;
-            }
+            // send to scheduler
+            message_send.m_process = processes[i];
+            message_send.mtype = 7;
+            send_val = msgsnd(msgq_id, &message_send, sizeof(message_send.m_process), !IPC_NOWAIT);
+            if (send_val == -1)
+                perror("Error: process_generator failed to send the input message \n");
+            processes[i].arrivalTime = -1;
+            i++;
         }
 
         // sleep(1);
-        curr_time = getClk();
+        if (i == processes_number)
+        {
+            break;
+        }
     }
-    printf("process generator destroying clock\n");
 
     free(processes);
-    msgctl(msgq_id, IPC_RMID, (struct msqid_ds *)0);
     // DESTROY RESOURCES
     int ps_shmid = shmget(PS_SHM_KEY, 4, IPC_CREAT | 0644);
     if (ps_shmid == -1)
@@ -154,6 +154,8 @@ int main(int argc, char *argv[])
         perror("Error in create sem");
         exit(-1);
     }
+    waitpid(pid2, NULL, 0); // wait for the schedular till it finishes
+    msgctl(msgq_id, IPC_RMID, (struct msqid_ds *)0);
     // deattach shared memory
     shmdt(ps_shmaddr);
     // destroy shared memory
@@ -161,6 +163,7 @@ int main(int argc, char *argv[])
     // destory semaphore
     semctl(sem1, 0, IPC_RMID, (union Semun)0);
     // 7. Clear clock resources
+    printf("process generator destroying clock\n");
     destroyClk(true);
 }
 

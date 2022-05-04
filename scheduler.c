@@ -13,6 +13,7 @@ typedef struct processControlBlock
     int cumulativeTime; //  cumulative runtime of the process
 } PCB;
 ////////////////////
+int pCount = 0;              // counter to know if all processes finished
 bool cpuFree = true;         // indicates that the cpu is free to excute a process
 Process *currentProc = NULL; // the currently running process
 PCB *processTable;           // the process table of the OS
@@ -22,6 +23,10 @@ float *Wait;
 int sem1;
 int ps_shmid;
 int *ps_shmaddr;
+// ---To recieve the processes using msg Q----
+struct my_msgbuff message_recieved;
+struct msqid_ds buf;
+int msgq_id;
 
 //----pointer to the output file----
 FILE *ptr;
@@ -29,17 +34,19 @@ FILE *ptr;
 // Functions Declarations
 void processTerminate(int sigID);
 void WriteOutputLine(FILE *ptr, int time, int process_id, char *state, int arr, int total, int reamain, int wait, int TA, float WTA);
-//void WriteFinalOutput(float cpuUtil, float AvgWTA, float AvgWait, float StdWTA);
-//float StandardDeviation(float data[], int size);
-//float AVG(float data[], int size);
+// void WriteFinalOutput(float cpuUtil, float AvgWTA, float AvgWait, float StdWTA);
+// float StandardDeviation(float data[], int size);
+// float AVG(float data[], int size);
 void TerminateCurrentProcess();
 void StopCurrentProcess();
 void ResumeCurrentProcess();
 void StartCurrentProcess();
 void decRemainingTimeOfCurrPs();
-void initSharedMemory(int* shmID, int key, int** shmAdrr);
-void initSemaphore(int* semID, int key);
+void initSharedMemory(int *shmID, int key, int **shmAdrr);
+void initSemaphore(int *semID, int key);
 void setSemaphoreValue(int sem, int value);
+void receiveNewProcess();
+
 int main(int argc, char *argv[])
 {
     ptr = fopen("scheduler.log", "w");
@@ -51,7 +58,7 @@ int main(int argc, char *argv[])
     int q_size = atoi(argv[2]);            // max no of processes
     int Quantum = atoi(argv[3]);           // Quantum for RR
     int numberOfProcesses = atoi(argv[4]); // max no of processes
-    int total_runtime = atoi(argv[5]); // total runtime of processes
+    int total_runtime = atoi(argv[5]);     // total runtime of processes
     // printf("Schedule algorithm : %d\n", sch_algo);
     // the process table of the OS
     processTable = (PCB *)malloc(sizeof(PCB) * q_size);
@@ -66,107 +73,31 @@ int main(int argc, char *argv[])
     //----------------SEMPAHORES------------------
     initSemaphore(&sem1, SEM1_KEY);
     //--------------------------------------------------------------------------
+    // create message queue and return id
+    msgq_id = msgget(MSGKEY, 0666 | IPC_CREAT);
+    int rc;
+    int num_messages;
     // switch case to choose the algo
+    int prevClk = getClk() - 1; // variables to know if the clk changed
+    int currClk;
+    bool firstTime = false; // to indicate that it's the first time to enter the algo
     switch (sch_algo)
     {
-    case 1:
-        // HPF();
-        // q1 = (PriorityQueue *)malloc(sizeof(PriorityQueue));
-        createPriorityQ(&q1, q_size);
-        break;
-
-    case 2:
-        // SRTN();
-        // q1 = (PriorityQueue *)malloc(sizeof(PriorityQueue));
-        createPriorityQ(&q1, q_size);
-        break;
-
-    case 3:
-        // RR();
-        // q2 = (CircularQueue *)malloc(sizeof(CircularQueue));
-        createCircularQueue(&q2, q_size);
-        break;
-
-    default:
-        break;
-    }
-    // create message queue and return id
-    int msgq_id = msgget(MSGKEY, 0666 | IPC_CREAT);
-    // buffer to recieve the processes
-    struct my_msgbuff message_recieved;
-    struct msqid_ds buf;
-    int num_messages;
-    int rc;
-    int prevClk = getClk() - 1;
-    // to indicate that circular queue received a new process for the first time after being empty
-    // so that we enter round robin without waiting for the quantum
-    bool firstTime = false;
-    int prevArr = 0;
-    while (getClk() < total_runtime + 1) // this replaces the while(1) by mark to make the scheduler terminate upon finishing all processes to continue after the while loop and terminate itself (process generator does not treminate schedular)
-    {
-        rc = msgctl(msgq_id, IPC_STAT, &buf); // check if there is a comming process
-        num_messages = buf.msg_qnum;
-        if (num_messages > 0)
+    case 1:;                          // HPF
+        createPriorityQ(&q1, q_size); // create the priority Q
+        while (1)                     // this replaces the while(1) by mark to make the scheduler terminate upon finishing all processes to continue after the while loop and terminate itself (process generator does not treminate schedular)
         {
-            int recv_Val = msgrcv(msgq_id, &message_recieved, sizeof(message_recieved.m_process), 7, IPC_NOWAIT);
-            if (recv_Val == -1)
-                perror("Error: Scheduler failed to receive  \n");
-
-            // printf("Proccess Scheduled Id : %d at Time : %d\n", message_recieved.m_process.id, message_recieved.m_process.arrivalTime);
-            //  Process newProc = message_recieved.m_process;
-            processTable[message_recieved.m_process.id - 1].priority = message_recieved.m_process.priority;
-            processTable[message_recieved.m_process.id - 1].execTime = message_recieved.m_process.runTime;
-            processTable[message_recieved.m_process.id - 1].ID = -1;
-
-            strcpy(processTable[message_recieved.m_process.id - 1].state, "ready");
-            processTable[message_recieved.m_process.id - 1].remaingTime = message_recieved.m_process.runTime; // initail remaining Time
-
-            // enqueue the new process
-            if (sch_algo == 1)
-            { // for HPF
-                printf("enqueued at time %d  proc id = %d \n", getClk(), message_recieved.m_process.id);
-                enqueue(&q1, message_recieved.m_process);
-            }
-            else if (sch_algo == 2) // SRTF
+            for (size_t i = 0; i < numberOfProcesses; i++) // to recieve all process sent at this time
             {
-                printf("enqueued at time %d  proc id = %d \n", getClk(), message_recieved.m_process.id);
-                if (isPriorityQueueEmpty(&q1))
+                rc = msgctl(msgq_id, IPC_STAT, &buf); // check if there is a comming process
+                num_messages = buf.msg_qnum;
+                if (num_messages > 0)
                 {
-                    firstTime = true; // to know if this process is the first process entered the Q
+                    printf("New Process Recieved \n");
+                    receiveNewProcess();
+                    enqueue(&q1, message_recieved.m_process);
                 }
-                message_recieved.m_process.priority = message_recieved.m_process.runTime;
-                // set the priority to the run time as a initial value because in SRTN the priority is the remaining time which is initally equal the run time
-                enqueue(&q1, message_recieved.m_process);
             }
-            else
-            {
-                printf("enqueued at time %d\n", getClk());
-                if (isCircularQueueEmpty(&q2))
-                {
-                    firstTime = true;
-                }
-                enQueueCircularQueue(&q2, &message_recieved.m_process);
-            }
-            // initialise prevArr with the value of the first process
-            if (prevArr == 0)
-            {
-                prevArr = message_recieved.m_process.arrivalTime;
-            }
-            // keep receiving processes that arrived at the same time to fill the queue
-            // before scheduling
-            if (prevArr == message_recieved.m_process.arrivalTime)
-            {
-                prevArr = message_recieved.m_process.arrivalTime;
-                continue;
-            }
-        }
-        // TODO implement the scheduler :)
-
-        int currClk;
-        switch (sch_algo)
-        {
-        case 1:;
-            // Non-preemptive Highest Priority First (HPF)
             currClk = getClk();
             if (prevClk != currClk)
             {
@@ -195,29 +126,83 @@ int main(int argc, char *argv[])
                         execl("process.out", "process", processRunTime, NULL);
                     }
                     else
-                    {                                                               // parent
-                        cpuFree = false;                                            // now the cpu is busy
+                    {                    // parent
+                        cpuFree = false; // now the cpu is busy
                         StartCurrentProcess(pid);
                     }
                 }
             }
-
-            break;
-        case 2:;
-            // SRTF
-            currClk = getClk();
-            if (prevClk != currClk || firstTime)
+            if (pCount == numberOfProcesses)
             {
-                printf("\n\nEntered clk %d\n", getClk());
-                if (currentProc != NULL) // if there is a running process (which means first time there is no a running process)
+                break; // if all processes finished break the loop
+            }
+        }
+        break;
+
+    case 2:; // SRTN
+        createPriorityQ(&q1, q_size);
+        while (1)
+        {
+            for (size_t i = 0; i < numberOfProcesses; i++) // to recieve all process sent at this time
+            {
+                rc = msgctl(msgq_id, IPC_STAT, &buf); // check if there is a comming process
+                num_messages = buf.msg_qnum;
+                if (num_messages > 0)
                 {
-                    Process pTemp;
-                    if (peek(&q1, &pTemp) != -1 && processTable[pTemp.id - 1].remaingTime < processTable[currentProc->id - 1].remaingTime)
+                    printf("New Process Recieved \n");
+                    receiveNewProcess();
+                    message_recieved.m_process.priority = message_recieved.m_process.runTime;
+                    enqueue(&q1, message_recieved.m_process);
+                }
+            }
+            if (cpuFree)
+            {
+                currentProc = (Process *)malloc(sizeof(Process));
+                int flag = peek(&q1, currentProc);
+                if (flag >= 0 && processTable[currentProc->id - 1].ID == -1)
+                {
+                    printf("flag is %d \n", flag);
+                    printf("PS %d, remaining time %d\n\n", currentProc->id, processTable[currentProc->id - 1].remaingTime);
+                    //  Set remaining time in shared memory
+                    *ps_shmaddr = processTable[currentProc->id - 1].remaingTime;
+                    // Set remaining time in semaphore
+                    setSemaphoreValue(sem1, processTable[currentProc->id - 1].remaingTime);
+                    int pid = fork();
+                    if (pid == 0) // child
                     {
+                        char processRunTime[2];                              // send the runTime of each
+                        sprintf(processRunTime, "%d", currentProc->runTime); // converts the int to string to sended in the arguments of the process
+                        execl("process.out", "process", processRunTime, NULL);
+                    }
+                    else
+                    { // parent
+                        dequeue(&q1, currentProc);
+                        printf("we forked an new process and now it's running \n");
+                        cpuFree = false; // now the cpu is busy
+                        StartCurrentProcess(pid);
+                    }
+                }
+                else
+                {
+                    // enqueue(&q1, *currentProc);
+                    free(currentProc);
+                    currentProc = NULL;
+                }
+            }
+
+            currClk = getClk();
+            if (prevClk != currClk) // each cycle
+            {
+                prevClk = currClk;
+                if (currentProc != NULL)
+                { // if there is a running process (which means first time there is no a running process)
+                    Process pTemp;
+                    if (peek(&q1, &pTemp) != -1 && pTemp.priority < currentProc->priority) // processTable[pTemp.id - 1].remaingTime < processTable[currentProc->id - 1].remaingTime
+                    {
+                        // printf("The peeked process with prio = %d \n", pTemp.priority);
                         cpuFree = true; // if the signal is stopped ...excute another one
-                        //printf("Stopping, id: %d\n", currentProc->priority);
+                        printf("Stopping, id: %d at clk %d \n", currentProc->id, getClk());
                         StopCurrentProcess();
-                        // processTable[currrentProc.id - 1].cumulativeTime += Quantum;
                         printf("enqueue, id: %d\n", currentProc->id);
                         enqueue(&q1, *currentProc);
                         free(currentProc); // free currentProcess after enqueuing it
@@ -230,57 +215,58 @@ int main(int argc, char *argv[])
                         down(sem1); // sem to sync the remaining time between the scheduler and the process
                     }
                 }
-                
-                prevClk = currClk;
                 if (cpuFree)
-                {   // if there is no currently a running process
+                { // if there is no currently a running process
                     currentProc = (Process *)malloc(sizeof(Process));
-                    // Mark : the problem here is that at time 3 process 1 started before process 3 was enqueued so we need to wait until process 3 is enqueued 
-                    bool flag = dequeue(&q1, currentProc);
-                    if (flag) // if there is a process in the Q
+                    bool flag = peek(&q1, currentProc);
+                    if (flag >= 0 && processTable[currentProc->id - 1].ID != -1) // if there is a process in the Q
                     {
-                         printf("dequeue, id: %d\n", currentProc->id);
-                        //printf("entered flag\n");
-                        // cpuFree = false; //??
-                        //printf("PS %d, remaining time %d\n\n", currentProc->id, processTable[currentProc->id - 1].remaingTime);
-                        // Set remaining time in shared memory
+                        //  Set remaining time in shared memory
                         *ps_shmaddr = processTable[currentProc->id - 1].remaingTime;
                         // Set remaining time in semaphore
                         setSemaphoreValue(sem1, processTable[currentProc->id - 1].remaingTime - 1);
-                        if (processTable[currentProc->id - 1].ID == -1) // if this process isn't forked yet
-                        {
-                            int pid = fork();
-                            if (pid == 0) // child
-                            {
-                                char processRunTime[2];                              // send the runTime of each
-                                sprintf(processRunTime, "%d", currentProc->runTime); // converts the int to string to sended in the arguments of the process
-                                execl("process.out", "process", processRunTime, NULL);
-                            }
-                            else
-                            { // Parent
-                                printf("Start, id: %d\n", currentProc->id);
-                                StartCurrentProcess(pid);
-                            }
-                        }
-                        else // if the process has been in the queue before
-                        {
-                            printf("Resume, id: %d\n", currentProc->id);
-                            ResumeCurrentProcess();
-                        }
-                        cpuFree = false; // now we are running a process
+                        printf("Resume, id: %d\n", currentProc->id);
+                        ResumeCurrentProcess();
+                        cpuFree = false; // now we are running a process started or resumed
+                        printf(" now we are running a process resumed \n");
+                        dequeue(&q1, currentProc);
                     }
                     else
                     {
+                        // enqueue(&q1, *currentProc);
                         free(currentProc);
                         currentProc = NULL;
                     }
                 }
-                firstTime = false;
             }
-            break;
-        case 3:;
+
+            if (pCount == numberOfProcesses)
+            {
+                break; // if all processes finished break the loop
+            }
+        }
+        break;
+
+    case 3:; // RR
+        createCircularQueue(&q2, q_size);
+        while (1)
+        {
+            for (size_t i = 0; i < numberOfProcesses; i++) // to recieve all process sent at this time
+            {
+                rc = msgctl(msgq_id, IPC_STAT, &buf); // check if there is a comming process
+                num_messages = buf.msg_qnum;
+                if (num_messages > 0)
+                {
+                    printf("New Process Recieved \n");
+                    receiveNewProcess();
+                    if (isCircularQueueEmpty(&q2))
+                    {
+                        firstTime = true; // to know if this process is the first process entered the Q
+                    }
+                    enQueueCircularQueue(&q2, &message_recieved.m_process);
+                }
+            }
             int quantumStartTime;
-            // bool currProcessFinished = false;
             currClk = getClk();
             if (prevClk != currClk || firstTime)
             {
@@ -304,7 +290,7 @@ int main(int argc, char *argv[])
                     quantumStartTime = getClk();
                     printf("entered mod\n");
                     // currProcessFinished = false;
-                    if(isCircularQueueEmpty(&q2)) // this was added by mark to solve the problem of stop-resume-stop-resume
+                    if (isCircularQueueEmpty(&q2)) // this was added by mark to solve the problem of stop-resume-stop-resume
                         continue;
                     if (currentProc != NULL) // if there is a running process (first time no process is running)
                     {
@@ -354,19 +340,278 @@ int main(int argc, char *argv[])
                     }
                 }
             }
-            break;
-        default:
-            break;
+            if (pCount == numberOfProcesses)
+            {
+                break; // if all processes finished break the loop
+            }
         }
+
+        break;
+
+    default:
+        break;
     }
+
+    // int num_messages;
+    // int rc;
+    // int prevClk = getClk() - 1;
+    // to indicate that circular queue received a new process for the first time after being empty
+    // so that we enter round robin without waiting for the quantum
+    // bool firstTime = false;
+    // int prevArr = 0;
+    // while (getClk() < total_runtime + 1) // this replaces the while(1) by mark to make the scheduler terminate upon finishing all processes to continue after the while loop and terminate itself (process generator does not treminate schedular)
+    // {
+    //     int rc = msgctl(msgq_id, IPC_STAT, &buf); // check if there is a comming process
+    //     int num_messages = buf.msg_qnum;
+    //     if (num_messages > 0)
+    //     {
+    //         receiveNewProcess();
+    //         // enqueue the new process
+    //         if (sch_algo == 1)
+    //         { // for HPF
+    //             printf("enqueued at time %d  proc id = %d \n", getClk(), message_recieved.m_process.id);
+    //             enqueue(&q1, message_recieved.m_process);
+    //         }
+    //         else if (sch_algo == 2) // SRTF
+    //         {
+    //             printf("enqueued at time %d  proc id = %d \n", getClk(), message_recieved.m_process.id);
+    //             if (isPriorityQueueEmpty(&q1))
+    //             {
+    //                 firstTime = true; // to know if this process is the first process entered the Q
+    //             }
+    //             message_recieved.m_process.priority = message_recieved.m_process.runTime;
+    //             // set the priority to the run time as a initial value because in SRTN the priority is the remaining time which is initally equal the run time
+    //             enqueue(&q1, message_recieved.m_process);
+    //         }
+    //         else
+    //         {
+    //             printf("enqueued at time %d\n", getClk());
+    //             if (isCircularQueueEmpty(&q2))
+    //             {
+    //                 firstTime = true;
+    //             }
+    //             enQueueCircularQueue(&q2, &message_recieved.m_process);
+    //         }
+    //         // initialise prevArr with the value of the first process
+    //         if (prevArr == 0)
+    //         {
+    //             prevArr = message_recieved.m_process.arrivalTime;
+    //         }
+    //         // keep receiving processes that arrived at the same time to fill the queue
+    //         // before scheduling
+    //         if (prevArr == message_recieved.m_process.arrivalTime)
+    //         {
+    //             prevArr = message_recieved.m_process.arrivalTime;
+    //             continue;
+    //         }
+    //     }
+    //     // TODO implement the scheduler :)
+
+    //     int currClk;
+    //     switch (sch_algo)
+    //     {
+    //     case 1:;
+    //         // Non-preemptive Highest Priority First (HPF)
+    //         currClk = getClk();
+    //         if (prevClk != currClk)
+    //         {
+    //             prevClk = currClk;
+    //             if (currentProc != NULL)
+    //             {
+    //                 printf("PS %d, remaining time %d\n", currentProc->id, processTable[currentProc->id - 1].remaingTime);
+    //                 decRemainingTimeOfCurrPs();
+    //                 // processTable[currentProc->id - 1].remaingTime--;
+    //             }
+    //         }
+    //         if (cpuFree)
+    //         {
+    //             currentProc = (Process *)malloc(sizeof(Process));
+    //             bool flag = dequeue(&q1, currentProc);
+    //             // printf("flag is %d \n", flag);
+    //             if (flag)
+    //             {
+    //                 printf("PS %d, remaining time %d\n\n", currentProc->id, processTable[currentProc->id - 1].remaingTime);
+    //                 *ps_shmaddr = processTable[currentProc->id - 1].remaingTime;
+    //                 int pid = fork();
+    //                 if (pid == 0) // child
+    //                 {
+    //                     char processRunTime[2];                              // send the runTime of each
+    //                     sprintf(processRunTime, "%d", currentProc->runTime); // converts the int to string to sended in the arguments of the process
+    //                     execl("process.out", "process", processRunTime, NULL);
+    //                 }
+    //                 else
+    //                 {                    // parent
+    //                     cpuFree = false; // now the cpu is busy
+    //                     StartCurrentProcess(pid);
+    //                 }
+    //             }
+    //         }
+
+    //         break;
+    //     case 2:;
+    //         // SRTF
+    //         currClk = getClk();
+    // if (prevClk != currClk || firstTime)
+    // {
+    //     printf("\n\nEntered clk %d\n", getClk());
+    //     if (currentProc != NULL) // if there is a running process (which means first time there is no a running process)
+    //     {
+    //         Process pTemp;
+    //         if (peek(&q1, &pTemp) != -1 && processTable[pTemp.id - 1].remaingTime < processTable[currentProc->id - 1].remaingTime)
+    //         {
+    //             cpuFree = true; // if the signal is stopped ...excute another one
+    //             // printf("Stopping, id: %d\n", currentProc->priority);
+    //             StopCurrentProcess();
+    //             // processTable[currrentProc.id - 1].cumulativeTime += Quantum;
+    //             printf("enqueue, id: %d\n", currentProc->id);
+    //             enqueue(&q1, *currentProc);
+    //             free(currentProc); // free currentProcess after enqueuing it
+    //         }
+    //         else
+    //         { // Handling Remaining time
+    //             printf("PS %d, remaining time %d\n", currentProc->id, processTable[currentProc->id - 1].remaingTime);
+    //             decRemainingTimeOfCurrPs();
+    //             currentProc->priority = processTable[currentProc->id - 1].remaingTime;
+    //             down(sem1); // sem to sync the remaining time between the scheduler and the process
+    //         }
+    //     }
+
+    //     prevClk = currClk;
+    //     if (cpuFree)
+    //     { // if there is no currently a running process
+    //         currentProc = (Process *)malloc(sizeof(Process));
+    //         // Mark : the problem here is that at time 3 process 1 started before process 3 was enqueued so we need to wait until process 3 is enqueued
+    //         bool flag = dequeue(&q1, currentProc);
+    //         if (flag) // if there is a process in the Q
+    //         {
+    //             printf("dequeue, id: %d\n", currentProc->id);
+    //             // printf("entered flag\n");
+    //             //  cpuFree = false; //??
+    //             // printf("PS %d, remaining time %d\n\n", currentProc->id, processTable[currentProc->id - 1].remaingTime);
+    //             //  Set remaining time in shared memory
+    //             *ps_shmaddr = processTable[currentProc->id - 1].remaingTime;
+    //             // Set remaining time in semaphore
+    //             setSemaphoreValue(sem1, processTable[currentProc->id - 1].remaingTime - 1);
+    //             if (processTable[currentProc->id - 1].ID == -1) // if this process isn't forked yet
+    //             {
+    //                 int pid = fork();
+    //                 if (pid == 0) // child
+    //                 {
+    //                     char processRunTime[2];                              // send the runTime of each
+    //                     sprintf(processRunTime, "%d", currentProc->runTime); // converts the int to string to sended in the arguments of the process
+    //                     execl("process.out", "process", processRunTime, NULL);
+    //                 }
+    //                 else
+    //                 { // Parent
+    //                     printf("Start, id: %d\n", currentProc->id);
+    //                     StartCurrentProcess(pid);
+    //                 }
+    //             }
+    //             else // if the process has been in the queue before
+    //             {
+    //                 printf("Resume, id: %d\n", currentProc->id);
+    //                 ResumeCurrentProcess();
+    //             }
+    //             cpuFree = false; // now we are running a process
+    //         }
+    //         else
+    //         {
+    //             free(currentProc);
+    //             currentProc = NULL;
+    //         }
+    //     }
+    //     firstTime = false;
+    // }
+    // break;
+    //     case 3:;
+    //         int quantumStartTime;
+    //         // bool currProcessFinished = false;
+    //         currClk = getClk();
+    //         if (prevClk != currClk || firstTime)
+    //         {
+    //             if (firstTime)
+    //             {
+    //                 quantumStartTime = getClk();
+    //             }
+
+    //             printf("\n\nEntered clk %d\n", getClk());
+    //             prevClk = currClk;
+    //             firstTime = false;
+    //             if (currentProc != NULL)
+    //             {
+    //                 printf("PS %d, remaining time %d\n", currentProc->id, processTable[currentProc->id - 1].remaingTime);
+    //                 decRemainingTimeOfCurrPs();
+    //                 down(sem1);
+    //             }
+
+    //             if (getClk() == Quantum + quantumStartTime || currentProc == NULL)
+    //             {
+    //                 quantumStartTime = getClk();
+    //                 printf("entered mod\n");
+    //                 // currProcessFinished = false;
+    //                 if (isCircularQueueEmpty(&q2)) // this was added by mark to solve the problem of stop-resume-stop-resume
+    //                     continue;
+    //                 if (currentProc != NULL) // if there is a running process (first time no process is running)
+    //                 {
+    //                     printf("Stopping, id: %d\n", currentProc->priority);
+    //                     StopCurrentProcess();
+    //                     // processTable[currrentProc.id - 1].cumulativeTime += Quantum;
+    //                     printf("enqueue, id: %d\n", currentProc->id);
+    //                     enQueueCircularQueue(&q2, currentProc);
+    //                     free(currentProc);
+    //                 }
+    //                 currentProc = (Process *)malloc(sizeof(Process));
+    //                 bool flag = deQueueCircularQueue(&q2, currentProc);
+    //                 if (flag)
+    //                 {
+    //                     printf("entered flag\n");
+    //                     cpuFree = false;
+    //                     printf("PS %d, remaining time %d\n\n", currentProc->id, processTable[currentProc->id - 1].remaingTime);
+    //                     // Set remaining time in shared memory
+    //                     *ps_shmaddr = processTable[currentProc->id - 1].remaingTime;
+    //                     // Set remaining time in semaphore
+    //                     setSemaphoreValue(sem1, processTable[currentProc->id - 1].remaingTime - 1);
+    //                     if (processTable[currentProc->id - 1].ID == -1)
+    //                     {
+    //                         int pid = fork();
+    //                         if (pid == 0) // child
+    //                         {
+    //                             char processRunTime[2];                              // send the runTime of each
+    //                             sprintf(processRunTime, "%d", currentProc->runTime); // converts the int to string to sended in the arguments of the process
+    //                             execl("process.out", "process", processRunTime, NULL);
+    //                         }
+    //                         else
+    //                         {
+    //                             printf("Start, id: %d\n", currentProc->id);
+    //                             StartCurrentProcess(pid);
+    //                         }
+    //                     }
+    //                     else
+    //                     {
+    //                         printf("resume, id: %d\n", currentProc->id);
+    //                         ResumeCurrentProcess();
+    //                     }
+    //                 }
+    //                 else
+    //                 {
+    //                     free(currentProc);
+    //                     currentProc = NULL;
+    //                 }
+    //             }
+    //         }
+    //         break;
+    //     default:
+    //         break;
+    //     }
+    // }
     printf("scheduler is finishing");
     fclose(ptr); // close the file at the end
     ptr = fopen("scheduler.perf", "w");
     float CPUutilisation = 1;
-    //float AvgWTA = AVG(WTA,numberOfProcesses);
-    //float AvgWait = AVG(Wait,numberOfProcesses);
-    //float StdWTA = StandardDeviation(WTA,numberOfProcesses);
-    //WriteFinalOutput(CPUutilisation,AvgWTA,AvgWait,StdWTA);
+    // float AvgWTA = AVG(WTA,numberOfProcesses);
+    // float AvgWait = AVG(Wait,numberOfProcesses);
+    // float StdWTA = StandardDeviation(WTA,numberOfProcesses);
+    // WriteFinalOutput(CPUutilisation,AvgWTA,AvgWait,StdWTA);
     fclose(ptr); // close the file at the end
     // deattach shared memory
     shmdt(ps_shmaddr);
@@ -379,23 +624,16 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-
-
-
-
-
-
-
-
 //----------------------------------------------------Utility functions-------------------------------------------------
 void processTerminate(int sigID)
 {
     cpuFree = true;
+    pCount++;
     strcpy(processTable[currentProc->id - 1].state, "finished");
 
     int TA = getClk() - processTable[currentProc->id - 1].startTime;
     WTA[currentProc->id - 1] = (float)TA / processTable[currentProc->id - 1].execTime; // Array of WTA of each process
-    Wait[currentProc->id - 1] = processTable[currentProc->id - 1].totWaitTime; // Array of WTA of each process
+    Wait[currentProc->id - 1] = processTable[currentProc->id - 1].totWaitTime;         // Array of WTA of each process
     // processTable[currrentProc.id - 1].totWaitTime = TA - processTable[currrentProc.id - 1].execTime;
     WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1].state, currentProc->arrivalTime,
                     currentProc->runTime, processTable[currentProc->id - 1].remaingTime, processTable[currentProc->id - 1].totWaitTime, TA, WTA[currentProc->id - 1]);
@@ -422,7 +660,7 @@ void WriteOutputLine(FILE *ptr, int time, int process_id, char *state, int arr, 
 
 void WriteFinalOutput(float cpuUtil, float AvgWTA, float AvgWait, float StdWTA)
 {
-    fprintf(ptr, "CPU utilisation = %f %c\nAvg WTA = = %f\nAvg Waiting = %f\nStd WTA = %f\n", cpuUtil*100,'%', AvgWTA, AvgWait, StdWTA);
+    fprintf(ptr, "CPU utilisation = %f %c\nAvg WTA = = %f\nAvg Waiting = %f\nStd WTA = %f\n", cpuUtil * 100, '%', AvgWTA, AvgWait, StdWTA);
     fflush(ptr);
 }
 
@@ -451,11 +689,13 @@ void StartCurrentProcess(int pid)
     WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1].state, currentProc->arrivalTime,
                     currentProc->runTime, processTable[currentProc->id - 1].remaingTime, processTable[currentProc->id - 1].totWaitTime, 0, 0);
 }
-void decRemainingTimeOfCurrPs(){
+void decRemainingTimeOfCurrPs()
+{
     processTable[currentProc->id - 1].remaingTime--;
     *ps_shmaddr = processTable[currentProc->id - 1].remaingTime;
 }
-void initSharedMemory(int* shmID, int key, int** shmAdrr){
+void initSharedMemory(int *shmID, int key, int **shmAdrr)
+{
     *shmID = shmget(key, 4, IPC_CREAT | 0644);
     if (*shmID == -1)
     {
@@ -470,7 +710,8 @@ void initSharedMemory(int* shmID, int key, int** shmAdrr){
         exit(-1);
     }
 }
-void initSemaphore(int* semID, int key){
+void initSemaphore(int *semID, int key)
+{
     *semID = semget(key, 1, 0666 | IPC_CREAT);
     if (*semID == -1)
     {
@@ -478,7 +719,8 @@ void initSemaphore(int* semID, int key){
         exit(-1);
     }
 }
-void setSemaphoreValue(int sem, int value){
+void setSemaphoreValue(int sem, int value)
+{
     union Semun semun;
     semun.val = value;
     if (semctl(sem, 0, SETVAL, semun) == -1)
@@ -486,6 +728,21 @@ void setSemaphoreValue(int sem, int value){
         perror("Scheduler: Error in semctl");
         exit(-1);
     }
+}
+void receiveNewProcess()
+{
+    int recv_Val = msgrcv(msgq_id, &message_recieved, sizeof(message_recieved.m_process), 7, IPC_NOWAIT);
+    if (recv_Val == -1)
+        perror("Error: Scheduler failed to receive  \n");
+
+    // printf("Proccess Scheduled Id : %d at Time : %d\n", message_recieved.m_process.id, message_recieved.m_process.arrivalTime);
+    //  Process newProc = message_recieved.m_process;
+    processTable[message_recieved.m_process.id - 1].priority = message_recieved.m_process.priority;
+    processTable[message_recieved.m_process.id - 1].execTime = message_recieved.m_process.runTime;
+    processTable[message_recieved.m_process.id - 1].ID = -1;
+
+    strcpy(processTable[message_recieved.m_process.id - 1].state, "ready");
+    processTable[message_recieved.m_process.id - 1].remaingTime = message_recieved.m_process.runTime; // initail remaining Time
 }
 // float StandardDeviation(float data[], int size)
 // {
