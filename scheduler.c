@@ -18,8 +18,13 @@ Process *currentProc = NULL; // the currently running process
 PCB *processTable;           // the process table of the OS
 float *WTA;
 float *Wait;
-/////////////////////
-FILE *ptr; // pointer to the output file
+//-----SHARED MEMORY AND SEMAPHORE VARIABLES----
+int sem1;
+int ps_shmid;
+int *ps_shmaddr;
+
+//----pointer to the output file----
+FILE *ptr;
 
 // Functions Declarations
 void processTerminate(int sigID);
@@ -31,7 +36,10 @@ void TerminateCurrentProcess();
 void StopCurrentProcess();
 void ResumeCurrentProcess();
 void StartCurrentProcess();
-
+void decRemainingTimeOfCurrPs();
+void initSharedMemory(int* shmID, int key, int** shmAdrr);
+void initSemaphore(int* semID, int key);
+void setSemaphoreValue(int sem, int value);
 int main(int argc, char *argv[])
 {
     ptr = fopen("scheduler.log", "w");
@@ -53,28 +61,10 @@ int main(int argc, char *argv[])
     PriorityQueue q1;
     CircularQueue q2;
     //-----------SHARED MEMORY BETWEEN SCHEDULER AND RUNNING PROCESS-----------
-    int ps_shmid = shmget(PS_SHM_KEY, 4, IPC_CREAT | 0644);
-    if (ps_shmid == -1)
-    {
-        perror("Scheduler: error in shared memory create\n");
-        exit(-1);
-    }
-    // attach shared memory to process
-    int *ps_shmaddr = (int *)shmat(ps_shmid, (void *)0, 0);
-    if ((long)ps_shmaddr == -1)
-    {
-        perror("Scheduler: error in attach\n");
-        exit(-1);
-    }
+    initSharedMemory(&ps_shmid, PS_SHM_KEY, &ps_shmaddr);
     //--------------------------------------------------------------------------
     //----------------SEMPAHORES------------------
-    union Semun semun;
-    int sem1 = semget(SEM1_KEY, 1, 0666 | IPC_CREAT);
-    if (sem1 == -1)
-    {
-        perror("Error in create sem");
-        exit(-1);
-    }
+    initSemaphore(&sem1, SEM1_KEY);
     //--------------------------------------------------------------------------
     // switch case to choose the algo
     switch (sch_algo)
@@ -184,7 +174,7 @@ int main(int argc, char *argv[])
                 if (currentProc != NULL)
                 {
                     printf("PS %d, remaining time %d\n", currentProc->id, processTable[currentProc->id - 1].remaingTime);
-                    *ps_shmaddr = --processTable[currentProc->id - 1].remaingTime;
+                    decRemainingTimeOfCurrPs();
                     // processTable[currentProc->id - 1].remaingTime--;
                 }
             }
@@ -235,10 +225,9 @@ int main(int argc, char *argv[])
                     else
                     { // Handling Remaining time
                         printf("PS %d, remaining time %d\n", currentProc->id, processTable[currentProc->id - 1].remaingTime);
-                        processTable[currentProc->id - 1].remaingTime--;
-                        *ps_shmaddr = processTable[currentProc->id - 1].remaingTime;
+                        decRemainingTimeOfCurrPs();
                         currentProc->priority = processTable[currentProc->id - 1].remaingTime;
-                        down(sem1); // sem to sych the remaining time between the scheduler and the process
+                        down(sem1); // sem to sync the remaining time between the scheduler and the process
                     }
                 }
                 
@@ -257,12 +246,7 @@ int main(int argc, char *argv[])
                         // Set remaining time in shared memory
                         *ps_shmaddr = processTable[currentProc->id - 1].remaingTime;
                         // Set remaining time in semaphore
-                        semun.val = processTable[currentProc->id - 1].remaingTime - 1;
-                        if (semctl(sem1, 0, SETVAL, semun) == -1)
-                        {
-                            perror("Scheduler: Error in semctl");
-                            exit(-1);
-                        }
+                        setSemaphoreValue(sem1, processTable[currentProc->id - 1].remaingTime - 1);
                         if (processTable[currentProc->id - 1].ID == -1) // if this process isn't forked yet
                         {
                             int pid = fork();
@@ -311,9 +295,7 @@ int main(int argc, char *argv[])
                 if (currentProc != NULL)
                 {
                     printf("PS %d, remaining time %d\n", currentProc->id, processTable[currentProc->id - 1].remaingTime);
-                    processTable[currentProc->id - 1].remaingTime--;
-                    *ps_shmaddr = processTable[currentProc->id - 1].remaingTime;
-                    // sem =remaining
+                    decRemainingTimeOfCurrPs();
                     down(sem1);
                 }
 
@@ -343,12 +325,7 @@ int main(int argc, char *argv[])
                         // Set remaining time in shared memory
                         *ps_shmaddr = processTable[currentProc->id - 1].remaingTime;
                         // Set remaining time in semaphore
-                        semun.val = processTable[currentProc->id - 1].remaingTime - 1;
-                        if (semctl(sem1, 0, SETVAL, semun) == -1)
-                        {
-                            perror("Scheduler: Error in semctl");
-                            exit(-1);
-                        }
+                        setSemaphoreValue(sem1, processTable[currentProc->id - 1].remaingTime - 1);
                         if (processTable[currentProc->id - 1].ID == -1)
                         {
                             int pid = fork();
@@ -474,8 +451,42 @@ void StartCurrentProcess(int pid)
     WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1].state, currentProc->arrivalTime,
                     currentProc->runTime, processTable[currentProc->id - 1].remaingTime, processTable[currentProc->id - 1].totWaitTime, 0, 0);
 }
-
-
+void decRemainingTimeOfCurrPs(){
+    processTable[currentProc->id - 1].remaingTime--;
+    *ps_shmaddr = processTable[currentProc->id - 1].remaingTime;
+}
+void initSharedMemory(int* shmID, int key, int** shmAdrr){
+    *shmID = shmget(key, 4, IPC_CREAT | 0644);
+    if (*shmID == -1)
+    {
+        perror("Scheduler: error in shared memory create\n");
+        exit(-1);
+    }
+    // attach shared memory to process
+    *shmAdrr = (int *)shmat(ps_shmid, (void *)0, 0);
+    if ((long)*shmAdrr == -1)
+    {
+        perror("Scheduler: error in attach\n");
+        exit(-1);
+    }
+}
+void initSemaphore(int* semID, int key){
+    *semID = semget(key, 1, 0666 | IPC_CREAT);
+    if (*semID == -1)
+    {
+        perror("Error in create sem");
+        exit(-1);
+    }
+}
+void setSemaphoreValue(int sem, int value){
+    union Semun semun;
+    semun.val = value;
+    if (semctl(sem, 0, SETVAL, semun) == -1)
+    {
+        perror("Scheduler: Error in semctl");
+        exit(-1);
+    }
+}
 // float StandardDeviation(float data[], int size)
 // {
 //     float sum = 0.0, mean, SD = 0.0;
