@@ -12,7 +12,7 @@ int main(int agrc, char *argv[])
         perror("Process: error in shared memory create\n");
         exit(-1);
     }
-    //attach shared memory to process
+    // attach shared memory to process
     int *ps_shmaddr = (int *)shmat(shmid, (void *)0, 0);
     if ((long)ps_shmaddr == -1)
     {
@@ -22,7 +22,6 @@ int main(int agrc, char *argv[])
     //-------------SEMPAHORE--------------
     int sem1 = semget(SEM1_KEY, 1, 0666 | IPC_CREAT);
     union Semun semun;
-
 
     int startTime = getClk();    // get the start time of the process
     int runTime = atoi(argv[1]); // RuntTime of the process
