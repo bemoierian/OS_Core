@@ -343,20 +343,20 @@ bool peekCircularQueue(CircularQueue *q, Process *element)
 }
 
 // Display the queue
-// void displayCircularQueue(CircularQueue *q)
-// {
-//     int i;
-//     if (isCircularQueueEmpty(q))
-//         printf(" \n Empty Queue\n");
-//     else
-//     {
-//         printf("\n Front -> %d ", q->front);
-//         printf("\n Items -> ");
-//         for (i = q->front; i != q->rear; i = (i + 1) % q->size)
-//         {
-//             printf("%d ", q->items[i].id);
-//         }
-//         printf("%d ", q->items[i]);
-//         printf("\n Rear -> %d \n", q->rear);
-//     }
-// }
+void displayCircularQueue(CircularQueue *q)
+{
+    int i;
+    if (isCircularQueueEmpty(q))
+        printf(" \n Empty Queue\n");
+    else
+    {
+        printf("\n Front -> %d ", q->front);
+        printf("\n Items -> ");
+        for (i = q->front; i != q->rear; i = (i + 1) % q->maxSize)
+        {
+            printf("%d ", q->items[i].id);
+        }
+        printf("%d ", q->items[i].id);
+        printf("\n Rear -> %d \n", q->rear);
+    }
+}
