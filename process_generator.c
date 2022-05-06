@@ -126,7 +126,6 @@ int main(int argc, char *argv[])
             i++;
         }
 
-        // sleep(1);
         if (i == processes_number)
         {
             break;
