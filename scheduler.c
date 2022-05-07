@@ -27,7 +27,8 @@ int *ps_shmaddr;
 struct my_msgbuff message_recieved;
 struct msqid_ds buf;
 int msgq_id;
-
+// variable indicates to finish time
+int finishTime;
 //----pointer to the output file----
 FILE *ptr;
 
@@ -135,6 +136,7 @@ int main(int argc, char *argv[])
             }
             if (pCount == numberOfProcesses)
             {
+                finishTime = getClk();
                 break; // if all processes finished break the loop
             }
         }
@@ -195,7 +197,6 @@ int main(int argc, char *argv[])
                 else
                 {
                     free(currentProc);
-                    currentProc = NULL;
                 }
             }
 
@@ -256,11 +257,11 @@ int main(int argc, char *argv[])
                         }
                     }
                 }
+                printf("pCount = %d \n", pCount);
             }
-
             if (pCount == numberOfProcesses)
             {
-                printf("pCount = %d \n", pCount);
+                finishTime = getClk();
                 break; // if all processes finished break the loop
             }
         }
@@ -414,12 +415,12 @@ int main(int argc, char *argv[])
                     else
                     {
                         free(pTemp);
-                        pTemp = NULL;
                     }
                 }
             }
             if (pCount == numberOfProcesses)
             {
+                finishTime = getClk();
                 break; // if all processes finished break the loop
             }
         }
@@ -681,10 +682,10 @@ int main(int argc, char *argv[])
     //         break;
     //     }
     // }
-    printf("scheduler is finishing");
+    printf("scheduler is finishing \n");
     fclose(ptr); // close the file at the end
     ptr = fopen("scheduler.perf", "w");
-    float CPUutilisation = 1;
+    float CPUutilisation = ((float)total_runtime / finishTime) * 100;
     // float AvgWTA = AVG(WTA,numberOfProcesses);
     // float AvgWait = AVG(Wait,numberOfProcesses);
     // float StdWTA = StandardDeviation(WTA,numberOfProcesses);
@@ -692,10 +693,6 @@ int main(int argc, char *argv[])
     fclose(ptr); // close the file at the end
     // deattach shared memory
     shmdt(ps_shmaddr);
-    // destroy shared memory
-    shmctl(ps_shmid, IPC_RMID, (struct shmid_ds *)0);
-    // destory semaphore
-    semctl(sem1, 0, IPC_RMID, (union Semun)0);
     // upon termination release the clock resources.
     destroyClk(true);
     return 0;

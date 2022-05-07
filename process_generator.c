@@ -2,7 +2,8 @@
 
 void clearResources(int);
 
-int msgq_id;
+int msgq_id, sem1, ps_shmid;
+int *ps_shmaddr;
 Process *processes;
 int pid1, pid2;
 int main(int argc, char *argv[])
@@ -134,26 +135,35 @@ int main(int argc, char *argv[])
 
     free(processes);
     // DESTROY RESOURCES
-    int ps_shmid = shmget(PS_SHM_KEY, 4, IPC_CREAT | 0644);
+    ps_shmid = shmget(PS_SHM_KEY, 4, IPC_CREAT | 0644);
     if (ps_shmid == -1)
     {
         perror("Process_generator: error in shared memory create\n");
         exit(-1);
     }
     // attach shared memory to process
-    int *ps_shmaddr = (int *)shmat(ps_shmid, (void *)0, 0);
+    ps_shmaddr = (int *)shmat(ps_shmid, (void *)0, 0);
     if ((long)ps_shmaddr == -1)
     {
         perror("Process_generator: error in attach\n");
         exit(-1);
     }
-    int sem1 = semget(SEM1_KEY, 1, 0666 | IPC_CREAT);
+    sem1 = semget(SEM1_KEY, 1, 0666 | IPC_CREAT);
     if (sem1 == -1)
     {
         perror("Error in create sem");
         exit(-1);
     }
     waitpid(pid2, NULL, 0); // wait for the schedular till it finishes
+    // 7. Clear clock resources
+    printf("process generator destroying clock\n");
+    destroyClk(true);
+    return 0;
+}
+
+void clearResources(int signum)
+{
+    // TODO Clears all resources in case of interruption
     msgctl(msgq_id, IPC_RMID, (struct msqid_ds *)0);
     // deattach shared memory
     shmdt(ps_shmaddr);
@@ -161,15 +171,4 @@ int main(int argc, char *argv[])
     shmctl(ps_shmid, IPC_RMID, (struct shmid_ds *)0);
     // destory semaphore
     semctl(sem1, 0, IPC_RMID, (union Semun)0);
-    // 7. Clear clock resources
-    printf("process generator destroying clock\n");
-    destroyClk(true);
-}
-
-void clearResources(int signum)
-{
-    // TODO Clears all resources in case of interruption
-    free(processes);
-    msgctl(msgq_id, IPC_RMID, (struct msqid_ds *)0);
-    destroyClk(true);
 }
