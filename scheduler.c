@@ -207,8 +207,8 @@ int main(int argc, char *argv[])
                 { // if there is a running process
                     printf("PS %d, remaining time %d\n", currentProc->id, processTable[currentProc->id - 1].remaingTime);
                     decRemainingTimeOfCurrPs();
-                    down(sem1); // sem to sync the remaining time between the scheduler and the process
                     currentProc->priority = processTable[currentProc->id - 1].remaingTime;
+                    down(sem1); // sem to sync the remaining time between the scheduler and the process
                     printf("sem down \n");
                     // receive any comming process if any to be checked on it
                     for (size_t i = 0; i < numberOfProcesses; i++) // to recieve all process sent at this time
@@ -220,13 +220,13 @@ int main(int argc, char *argv[])
                             receiveNewProcess();
                             message_recieved.m_process.priority = message_recieved.m_process.runTime;
                             enqueue(&q1, message_recieved.m_process);
-                            printf("New Process Recieved %d\n", message_recieved.m_process.id);
+                            printf("New Process Recieved %d \n", message_recieved.m_process.id);
                         }
                     }
                     Process pTemp;
                     if (peek(&q1, &pTemp) != -1 && pTemp.priority < currentProc->priority) // processTable[pTemp.id - 1].remaingTime < processTable[currentProc->id - 1].remaingTime
                     {
-                        // printf("The peeked process with prio = %d \n", pTemp.priority);
+                        printf("The peeked process with prio = %d \n", pTemp.priority);
                         cpuFree = true; // if the process is stopped ...excute another one
                         printf("Stopping, id: %d at clk %d \n", currentProc->id, getClk());
                         StopCurrentProcess(); // stop the curr process
@@ -236,8 +236,8 @@ int main(int argc, char *argv[])
                         if (cpuFree)
                         { // if there is no currently a running process
                             currentProc = (Process *)malloc(sizeof(Process));
-                            bool flag = peek(&q1, currentProc);
-                            if (flag && processTable[currentProc->id - 1].ID != -1) // if there is a process in the Q
+                            int flag = peek(&q1, currentProc);
+                            if (flag >= 0 && processTable[currentProc->id - 1].ID != -1) // if there is a process in the Q
                             {
                                 //  Set remaining time in shared memory
                                 *ps_shmaddr = processTable[currentProc->id - 1].remaingTime;
@@ -249,12 +249,11 @@ int main(int argc, char *argv[])
                                 printf(" now we are running a process resumed \n");
                                 dequeue(&q1, currentProc);
                             }
-                            else
-                            {
-                                // enqueue(&q1, *currentProc);
-                                free(currentProc);
-                                currentProc = NULL;
-                            }
+                            // else
+                            // {
+                            //     free(currentProc);
+                            //     currentProc = NULL;
+                            // }
                         }
                     }
                     // else
@@ -266,6 +265,7 @@ int main(int argc, char *argv[])
 
             if (pCount == numberOfProcesses)
             {
+                printf("pCount = %d \n", pCount);
                 break; // if all processes finished break the loop
             }
         }

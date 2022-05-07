@@ -1,4 +1,4 @@
-At time 0 process 1 started arr 0 total 6 remain 6 wait 0
-At time 1 process 1 stopped arr 0 total 6 remain 5 wait 0
-At time 1 process 2 started arr 1 total 2 remain 2 wait 0
-At time 3 process 2 finished arr 1 total 2 remain 0 wait 0 TA 2 WTA 1.000000
+At time 1 process 1 started arr 1 total 6 remain 6 wait 0
+At time 2 process 1 stopped arr 1 total 6 remain 5 wait 0
+At time 2 process 2 started arr 1 total 2 remain 2 wait 1
+At time 4 process 2 finished arr 1 total 2 remain 0 wait 1 TA 2 WTA 1.000000

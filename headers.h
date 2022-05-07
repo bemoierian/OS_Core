@@ -13,6 +13,7 @@
 #include <limits.h>
 #include <string.h>
 #include <math.h>
+#include <errno.h>
 
 typedef short bool;
 #define true 1
@@ -88,9 +89,12 @@ void down(int sem)
     // param1: semaphore id
     // param2: pointer to array of operations
     // param3: number of operations inside array
-    if (semop(sem, &p_op, 1) == -1)
+    int val;
+    while ((val = semop(sem, &p_op, 1)) == -1 && errno == EINTR)
+        ;
+    if (val == -1)
     {
-        perror("Error in down()");
+        perror("Error in down()\n");
         exit(-1);
     }
 }
@@ -104,9 +108,17 @@ void up(int sem)
     v_op.sem_op = 1;
     v_op.sem_flg = !IPC_NOWAIT;
 
-    if (semop(sem, &v_op, 1) == -1)
+    // if (semop(sem, &v_op, 1) == -1)
+    // {
+    //     perror("Error in up()");
+    //     exit(-1);
+    // }
+    int val;
+    while ((val = semop(sem, &v_op, 1)) == -1 && errno == EINTR)
+        ;
+    if (val == -1)
     {
-        perror("Error in up()");
+        perror("Error in up()\n");
         exit(-1);
     }
 }
