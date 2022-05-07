@@ -249,17 +249,12 @@ int main(int argc, char *argv[])
                                 printf(" now we are running a process resumed \n");
                                 dequeue(&q1, currentProc);
                             }
-                            // else
-                            // {
-                            //     free(currentProc);
-                            //     currentProc = NULL;
-                            // }
+                            else
+                            {
+                                free(currentProc);
+                            }
                         }
                     }
-                    // else
-                    // { // Handling Remaining time
-
-                    // }
                 }
             }
 

@@ -91,7 +91,7 @@ void down(int sem)
     // param3: number of operations inside array
     int val;
     while ((val = semop(sem, &p_op, 1)) == -1 && errno == EINTR)
-        ;
+        {continue;}
     if (val == -1)
     {
         perror("Error in down()\n");
@@ -115,7 +115,7 @@ void up(int sem)
     // }
     int val;
     while ((val = semop(sem, &v_op, 1)) == -1 && errno == EINTR)
-        ;
+        {continue;}
     if (val == -1)
     {
         perror("Error in up()\n");
