@@ -35,9 +35,9 @@ FILE *ptr;
 // Functions Declarations
 void processTerminate(int sigID);
 void WriteOutputLine(FILE *ptr, int time, int process_id, char *state, int arr, int total, int reamain, int wait, int TA, float WTA);
-// void WriteFinalOutput(float cpuUtil, float AvgWTA, float AvgWait, float StdWTA);
-// float StandardDeviation(float data[], int size);
-// float AVG(float data[], int size);
+void WriteFinalOutput(float cpuUtil, float AvgWTA, float AvgWait, float StdWTA);
+float StandardDeviation(float data[], int size);
+float AVG(float data[], int size);
 void TerminateCurrentProcess();
 void StopCurrentProcess();
 void ResumeCurrentProcess();
@@ -686,10 +686,10 @@ int main(int argc, char *argv[])
     fclose(ptr); // close the file at the end
     ptr = fopen("scheduler.perf", "w");
     float CPUutilisation = ((float)total_runtime / finishTime) * 100;
-    // float AvgWTA = AVG(WTA,numberOfProcesses);
-    // float AvgWait = AVG(Wait,numberOfProcesses);
-    // float StdWTA = StandardDeviation(WTA,numberOfProcesses);
-    // WriteFinalOutput(CPUutilisation,AvgWTA,AvgWait,StdWTA);
+    float AvgWTA = AVG(WTA,numberOfProcesses);
+    float AvgWait = AVG(Wait,numberOfProcesses);
+    float StdWTA = StandardDeviation(WTA,numberOfProcesses);
+    WriteFinalOutput(CPUutilisation,AvgWTA,AvgWait,StdWTA);
     fclose(ptr); // close the file at the end
     // deattach shared memory
     shmdt(ps_shmaddr);
@@ -705,7 +705,7 @@ void processTerminate(int sigID)
     pCount++;       // to count the finished processes
     strcpy(processTable[currentProc->id - 1].state, "finished");
 
-    int TA = getClk() - processTable[currentProc->id - 1].startTime;
+    int TA = getClk() - currentProc->arrivalTime;
     WTA[currentProc->id - 1] = (float)TA / processTable[currentProc->id - 1].execTime; // Array of WTA of each process
     Wait[currentProc->id - 1] = processTable[currentProc->id - 1].totWaitTime;         // Array of WTA of each process
     // processTable[currrentProc.id - 1].totWaitTime = TA - processTable[currrentProc.id - 1].execTime;
@@ -727,7 +727,7 @@ void TerminateCurrentProcess()
 void WriteOutputLine(FILE *ptr, int time, int process_id, char *state, int arr, int total, int reamain, int wait, int TA, float WTA)
 {
     if (!strcmp(state, "finished"))
-        fprintf(ptr, "At time %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %f\n", time, process_id, state, arr, total, reamain, wait, TA, WTA);
+        fprintf(ptr, "At time %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %.2f\n", time, process_id, state, arr, total, reamain, wait, TA, WTA);
     else
         fprintf(ptr, "At time %d process %d %s arr %d total %d remain %d wait %d\n", time, process_id, state, arr, total, reamain, wait);
     fflush(ptr);
@@ -735,7 +735,7 @@ void WriteOutputLine(FILE *ptr, int time, int process_id, char *state, int arr, 
 
 void WriteFinalOutput(float cpuUtil, float AvgWTA, float AvgWait, float StdWTA)
 {
-    fprintf(ptr, "CPU utilisation = %f %c\nAvg WTA = = %f\nAvg Waiting = %f\nStd WTA = %f\n", cpuUtil * 100, '%', AvgWTA, AvgWait, StdWTA);
+    fprintf(ptr, "CPU utilisation = %.2f %c\nAvg WTA = = %.2f\nAvg Waiting = %.2f\nStd WTA = %.2f\n", cpuUtil , '%', AvgWTA, AvgWait, StdWTA);
     fflush(ptr);
 }
 
@@ -820,29 +820,30 @@ void receiveNewProcess()
     strcpy(processTable[message_recieved.m_process.id - 1].state, "ready");
     processTable[message_recieved.m_process.id - 1].remaingTime = message_recieved.m_process.runTime; // initail remaining Time
 }
-// float StandardDeviation(float data[], int size)
-// {
-//     float sum = 0.0, mean, SD = 0.0;
-//     int i;
-//     for (i = 0; i < size; ++i)
-//     {
-//         sum += data[i];
-//     }
-//     mean = sum / size;
-//     for (i = 0; i < size; ++i)
-//     {
-//         SD += (data[i] - mean)*(data[i] - mean);
-//     }
-//     return sqrt(SD / size);
-// }
-// float AVG(float data[], int size)
-// {
-//     float sum = 0.0, mean;
-//     int i;
-//     for (i = 0; i < size; ++i)
-//     {
-//         sum += data[i];
-//     }
-//     mean = sum / size;
-//     return mean;
-// }
+
+float StandardDeviation(float data[], int size)
+{
+    float sum = 0.0, mean, SD = 0.0;
+    int i;
+    for (i = 0; i < size; ++i)
+    {
+        sum += data[i];
+    }
+    mean = sum / size;
+    for (i = 0; i < size; ++i)
+    {
+        SD += (data[i] - mean)*(data[i] - mean);
+    }
+    return sqrt(SD / size);
+}
+float AVG(float data[], int size)
+{
+    float sum = 0.0, mean;
+    int i;
+    for (i = 0; i < size; ++i)
+    {
+        sum += data[i];
+    }
+    mean = sum / size;
+    return mean;
+}
