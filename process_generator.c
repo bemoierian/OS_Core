@@ -48,16 +48,16 @@ int main(int argc, char *argv[])
         k++;
     }
     // calculating total runtime (including waiting time )
-    total_runtime += processes[0].arrivalTime;
-    int start = processes[0].arrivalTime;
-    for (int i = 1; i < processes_number; i++)
-    {
-        if (start + processes[i - 1].runTime < processes[i].arrivalTime)
-        {
-            total_runtime += processes[i].arrivalTime - (start + processes[i - 1].runTime);
-        }
-        start += processes[i].runTime;
-    }
+    // total_runtime += processes[0].arrivalTime;
+    // int start = processes[0].arrivalTime;
+    // for (int i = 1; i < processes_number; i++)
+    // {
+    //     if (start + processes[i - 1].runTime < processes[i].arrivalTime)
+    //     {
+    //         total_runtime += processes[i].arrivalTime - (start + processes[i - 1].runTime);
+    //     }
+    //     start += processes[i].runTime;
+    // }
     fclose(ptr);
     // 2. Ask the user for the chosen scheduling algorithm and its parameters, if there are any.
     printf("Choose the scheduling algorithm\n");

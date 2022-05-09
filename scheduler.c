@@ -11,18 +11,19 @@ typedef struct processControlBlock
     int startTime;    // Start time of Running
     int priority;
     int cumulativeTime; //  cumulative runtime of the process
+    int lastClk;        // to represent the last clk the process was warking in
 } PCB;
 ////////////////////
 int pCount = 0;              // counter to know if all processes finished
 bool cpuFree = true;         // indicates that the cpu is free to excute a process
-Process* currentProc = NULL; // the currently running process
-PCB** processTable;           // the process table of the OS
-float* WTA;
-float* Wait;
+Process *currentProc = NULL; // the currently running process
+PCB **processTable;          // the process table of the OS
+float *WTA;
+float *Wait;
 //-----SHARED MEMORY AND SEMAPHORE VARIABLES----
 int sem1;
 int ps_shmid;
-int* ps_shmaddr;
+int *ps_shmaddr;
 // ---To recieve the processes using msg Q----
 struct my_msgbuff message_recieved;
 struct msqid_ds buf;
@@ -30,7 +31,7 @@ int msgq_id;
 // variable indicates to finish time
 int finishTime;
 //----pointer to the output file----
-FILE* ptr;
+FILE *ptr;
 
 // Functions Declarations
 void processTerminate(int sigID);
@@ -62,11 +63,12 @@ int main(int argc, char *argv[])
     int Quantum = atoi(argv[3]);           // Quantum for RR
     int numberOfProcesses = atoi(argv[4]); // max no of processes
     int total_runtime = atoi(argv[5]);     // total runtime of processes
+    printf("runTime Time = %d \n", total_runtime);
 
     // the process table of the OS
-    processTable = malloc(sizeof(PCB*) * numberOfProcesses);
-    WTA = (float*)malloc(sizeof(float) * numberOfProcesses);
-    Wait = (float*)malloc(sizeof(float) * numberOfProcesses);
+    processTable = malloc(sizeof(PCB *) * numberOfProcesses);
+    WTA = (float *)malloc(sizeof(float) * numberOfProcesses);
+    Wait = (float *)malloc(sizeof(float) * numberOfProcesses);
     // the queues used in scheduling depends on the type of the algorithm
     PriorityQueue q1;
     CircularQueue q2;
@@ -86,7 +88,7 @@ int main(int argc, char *argv[])
     bool firstTime = false; // to indicate that it's the first time to enter the algo
     switch (sch_algo)
     {
-    case 1:;//HPF
+    case 1:; // HPF
         printf("Entered case 1\n");
         createPriorityQ(&q1, q_size); // create the priority Q
         while (1)                     // this replaces the while(1) by mark to make the scheduler terminate upon finishing all processes to continue after the while loop and terminate itself (process generator does not treminate schedular)
@@ -408,8 +410,8 @@ int main(int argc, char *argv[])
                                 enQueueCircularQueue(&q2, &message_recieved.m_process);
                             }
                         }
-                        enQueueCircularQueue(&q2, currentProc);   // enqueue the the stopped process to the ready queue
-                        cpuFree = true;                           // we stopped the curr process so the cpu is free
+                        enQueueCircularQueue(&q2, currentProc);    // enqueue the the stopped process to the ready queue
+                        cpuFree = true;                            // we stopped the curr process so the cpu is free
                         if (processTable[pTemp->id - 1]->ID != -1) // old process -> forked before
                         {
                             // Set remaining time in shared memory
@@ -697,18 +699,20 @@ int main(int argc, char *argv[])
     printf("scheduler is finishing \n");
     fclose(ptr); // close the file at the end
     ptr = fopen("scheduler.perf", "w");
+    printf("finish Time = %d \n", finishTime);
+    printf("runTime Time = %d \n", total_runtime);
     float CPUutilisation = ((float)total_runtime / finishTime) * 100;
-    float AvgWTA = AVG(WTA,numberOfProcesses);
-    float AvgWait = AVG(Wait,numberOfProcesses);
-    float StdWTA = StandardDeviation(WTA,numberOfProcesses);
-    WriteFinalOutput(CPUutilisation,AvgWTA,AvgWait,StdWTA);
+    float AvgWTA = AVG(WTA, numberOfProcesses);
+    float AvgWait = AVG(Wait, numberOfProcesses);
+    float StdWTA = StandardDeviation(WTA, numberOfProcesses);
+    WriteFinalOutput(CPUutilisation, AvgWTA, AvgWait, StdWTA);
     fclose(ptr); // close the file at the end
     // deattach shared memory
     shmdt(ps_shmaddr);
-    //free wta
+    // free wta
     free(WTA);
     free(Wait);
-    //free process table
+    // free process table
     destroyPCB(numberOfProcesses);
     // upon termination release the clock resources.
     destroyClk(true);
@@ -756,12 +760,13 @@ void WriteOutputLine(FILE *ptr, int time, int process_id, char *state, int arr, 
 
 void WriteFinalOutput(float cpuUtil, float AvgWTA, float AvgWait, float StdWTA)
 {
-    fprintf(ptr, "CPU utilisation = %.2f %c\nAvg WTA = = %.2f\nAvg Waiting = %.2f\nStd WTA = %.2f\n", cpuUtil , '%', AvgWTA, AvgWait, StdWTA);
+    fprintf(ptr, "CPU utilisation = %.2f %c\nAvg WTA = %.2f\nAvg Waiting = %.2f\nStd WTA = %.2f\n", cpuUtil, '%', AvgWTA, AvgWait, StdWTA);
     fflush(ptr);
 }
 
 void ResumeCurrentProcess()
 {
+    processTable[currentProc->id - 1]->totWaitTime += (getClk() - processTable[currentProc->id - 1]->lastClk);
     strcpy(processTable[currentProc->id - 1]->state, "resumed"); // set the state running
     WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1]->state, currentProc->arrivalTime,
                     currentProc->runTime, processTable[currentProc->id - 1]->remainingTime, processTable[currentProc->id - 1]->totWaitTime, 0, 0);
@@ -769,6 +774,7 @@ void ResumeCurrentProcess()
 }
 void StopCurrentProcess()
 {
+    processTable[currentProc->id - 1]->lastClk = getClk();
     kill(processTable[currentProc->id - 1]->ID, SIGSTOP);        // to stop the running process
     strcpy(processTable[currentProc->id - 1]->state, "stopped"); // set the state running
     WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1]->state, currentProc->arrivalTime,
@@ -834,7 +840,7 @@ void receiveNewProcess()
     // processTable[message_recieved.m_process.id - 1] = (PCB *)malloc(sizeof(Process));
     // printf("Proccess Scheduled Id : %d at Time : %d\n", message_recieved.m_process.id, message_recieved.m_process.arrivalTime);
     //  Process newProc = message_recieved.m_process;
-    processTable[message_recieved.m_process.id - 1] = (PCB*)malloc(sizeof(PCB));
+    processTable[message_recieved.m_process.id - 1] = (PCB *)malloc(sizeof(PCB));
     processTable[message_recieved.m_process.id - 1]->priority = message_recieved.m_process.priority;
     processTable[message_recieved.m_process.id - 1]->execTime = message_recieved.m_process.runTime;
     processTable[message_recieved.m_process.id - 1]->ID = -1;
@@ -854,7 +860,7 @@ float StandardDeviation(float data[], int size)
     mean = sum / size;
     for (i = 0; i < size; ++i)
     {
-        SD += (data[i] - mean)*(data[i] - mean);
+        SD += (data[i] - mean) * (data[i] - mean);
     }
     return sqrt(SD / size);
 }
@@ -869,7 +875,8 @@ float AVG(float data[], int size)
     mean = sum / size;
     return mean;
 }
-void destroyPCB(int numberOfProcesses){
+void destroyPCB(int numberOfProcesses)
+{
     for (int i = 0; i < numberOfProcesses; i++)
     {
         if (processTable[i] != NULL)
