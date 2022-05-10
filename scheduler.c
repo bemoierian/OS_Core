@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
     int prevClk = getClk() - 1; // variables to know if the clk changed
     int currClk;
     bool firstTime = false; // to indicate that it's the first time to enter the algo
-    printf("number of PS = %d",numberOfProcesses);
+    printf("number of PS = %d \n", numberOfProcesses);
     switch (sch_algo)
     {
     case 1:; // HPF
@@ -146,9 +146,7 @@ int main(int argc, char *argv[])
                 {
                     free(currentProc);
                     currentProc = NULL;
-
                 }
-                
             }
             if (pCount == numberOfProcesses)
             {
@@ -832,8 +830,12 @@ void setSemaphoreValue(int sem, int value)
     union Semun semun;
     semun.val = value;
     int val;
-    while (val = semctl(sem, 0, SETVAL, semun) == -1&& errno == EINTR){continue;}
-    if(val==-1){
+    while (val = semctl(sem, 0, SETVAL, semun) == -1 && errno == EINTR)
+    {
+        continue;
+    }
+    if (val == -1)
+    {
         perror("Scheduler: Error in semctl");
         exit(-1);
     }

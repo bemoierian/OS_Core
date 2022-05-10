@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
     int processes_number = 0;
     int total_runtime = 0;
     char a;
-    while (!feof(ptr))
+    while (!feof(ptr)) // need to me modified
     {
         a = fgetc(ptr);
         if (a == '\n')
@@ -26,10 +26,10 @@ int main(int argc, char *argv[])
     }
     fclose(ptr);
     ptr = fopen("processes.txt", "r");
-    processes = (Process *)malloc(processes_number * sizeof *processes);
+    processes = (Process *)malloc(processes_number * sizeof(Process));
     int k = 0;
     char str[40];
-    while (fgets(str, 40, ptr) != NULL)
+    while (fgets(str, 40, ptr) != NULL) // need to be modified
     {
         char *line = strtok(str, "\t");
         if (line[0] == '#') // ignore comment lines
@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
 
 void clearResources(int signum)
 {
-    
+
     // TODO Clears all resources in case of interruption
     msgctl(msgq_id, IPC_RMID, (struct msqid_ds *)0);
     // deattach shared memory
@@ -172,4 +172,8 @@ void clearResources(int signum)
     shmctl(ps_shmid, IPC_RMID, (struct shmid_ds *)0);
     // destory semaphore
     semctl(sem1, 0, IPC_RMID, (union Semun)0);
+    // 7. Clear clock resources
+    printf("process generator destroying clock\n");
+    destroyClk(true); // if your press ctrl+c you have to kill other processes so we need to call destroy clk
+    exit(0);          // terminate process generator
 }
