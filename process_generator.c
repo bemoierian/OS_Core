@@ -31,14 +31,14 @@ int main(int argc, char *argv[])
     char str[40];
     while (fgets(str, 40, ptr) != NULL)
     {
-        char *line = strtok(str, " ");
+        char *line = strtok(str, "\t");
         if (line[0] == '#') // ignore comment lines
             continue;
         int x[4]; // store the values of each process
         for (int i = 0; i < 4; i++)
         {
             x[i] = atoi(line);
-            line = strtok(NULL, " ");
+            line = strtok(NULL, "\t");
         }
         processes[k].id = x[0];
         processes[k].arrivalTime = x[1];
@@ -163,6 +163,7 @@ int main(int argc, char *argv[])
 
 void clearResources(int signum)
 {
+    
     // TODO Clears all resources in case of interruption
     msgctl(msgq_id, IPC_RMID, (struct msqid_ds *)0);
     // deattach shared memory
