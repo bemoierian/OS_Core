@@ -16,36 +16,39 @@ int main(int argc, char *argv[])
     int processes_number = 0;
     int total_runtime = 0;
     char a;
-    while (!feof(ptr)) // need to me modified
+    char str[40];
+    while (fgets(str, 40, ptr) != NULL)
     {
-        a = fgetc(ptr);
-        if (a == '\n')
+        if (str[0] >= '0' && str[0] <= '9')
         {
             processes_number++;
         }
     }
+    printf("number of processes = %d\n",processes_number);
     fclose(ptr);
     ptr = fopen("processes.txt", "r");
     processes = (Process *)malloc(processes_number * sizeof(Process));
     int k = 0;
-    char str[40];
     while (fgets(str, 40, ptr) != NULL) // need to be modified
     {
         char *line = strtok(str, "\t");
         if (line[0] == '#') // ignore comment lines
             continue;
-        int x[4]; // store the values of each process
-        for (int i = 0; i < 4; i++)
+        else if(str[0] >= '0' && str[0] <= '9')
         {
-            x[i] = atoi(line);
-            line = strtok(NULL, "\t");
+            int x[4]; // store the values of each process
+            for (int i = 0; i < 4; i++)
+            {
+                x[i] = atoi(line);
+                line = strtok(NULL, "\t");
+            }
+            processes[k].id = x[0];
+            processes[k].arrivalTime = x[1];
+            processes[k].runTime = x[2];
+            processes[k].priority = x[3];
+            total_runtime += processes[k].runTime;
+            k++;
         }
-        processes[k].id = x[0];
-        processes[k].arrivalTime = x[1];
-        processes[k].runTime = x[2];
-        processes[k].priority = x[3];
-        total_runtime += processes[k].runTime;
-        k++;
     }
     // calculating total runtime (including waiting time )
     // total_runtime += processes[0].arrivalTime;
