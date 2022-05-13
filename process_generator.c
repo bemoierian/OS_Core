@@ -24,17 +24,19 @@ int main(int argc, char *argv[])
             processes_number++;
         }
     }
-    printf("number of processes = %d\n",processes_number);
+    printf("number of processes = %d\n", processes_number);
     fclose(ptr);
     ptr = fopen("processes.txt", "r");
     processes = (Process *)malloc(processes_number * sizeof(Process));
     int k = 0;
-    while (fgets(str, 40, ptr) != NULL) // need to be modified
+    while (fgets(str, 40, ptr) != NULL)
     {
+        // printf("in while\n");
         char *line = strtok(str, "\t");
+        // printf("line = %s\n", line);
         if (line[0] == '#') // ignore comment lines
             continue;
-        else if(str[0] >= '0' && str[0] <= '9')
+        else if (str[0] >= '0' && str[0] <= '9')
         {
             int x[4]; // store the values of each process
             for (int i = 0; i < 4; i++)

@@ -136,7 +136,6 @@ int main(int argc, char *argv[])
                     else
                     {                    // parent
                         cpuFree = false; // now the cpu is busy
-                        // processTable[currentProc->id - 1] = (PCB *)malloc(sizeof(PCB));
                         StartCurrentProcess(pid);
                         printf("PS %d, remaining time %d\n\n", currentProc->id, processTable[currentProc->id - 1]->remainingTime);
                         *ps_shmaddr = processTable[currentProc->id - 1]->remainingTime;
@@ -206,7 +205,7 @@ int main(int argc, char *argv[])
                         // resume
                         ResumeCurrentProcess();
                     }
-                    cpuFree = false; // if we resumed the next process the cpu is not free
+                    cpuFree = false; // if we resumed the next process or started a new process the cpu is not free
                 }
                 else
                 {
@@ -230,6 +229,7 @@ int main(int argc, char *argv[])
                     for (size_t i = 0; i < numberOfProcesses; i++) // to recieve all process sent at this time
                     {
                         rc = msgctl(msgq_id, IPC_STAT, &buf); // check if there is a comming process
+                        printf("waiting for a process \n");
                         num_messages = buf.msg_qnum;
                         if (num_messages > 0)
                         {
@@ -239,18 +239,20 @@ int main(int argc, char *argv[])
                             printf("New Process Recieved %d \n", message_recieved.m_process.id);
                         }
                     }
-                    Process pTemp;
-                    if (peek(&q1, &pTemp) != -1 && pTemp.priority < currentProc->priority) // processTable[pTemp.id - 1].remaingTime < processTable[currentProc->id - 1]->remaingTime
+                    Process *pTemp = (Process *)malloc(sizeof(Process));
+                    if (peek(&q1, pTemp) != -1) // processTable[pTemp.id - 1].remaingTime < processTable[currentProc->id - 1]->remaingTime
                     {
-                        printf("The peeked process with prio = %d \n", pTemp.priority);
-                        cpuFree = true; // if the process is stopped ...excute another one
-                        printf("Stopping, id: %d at clk %d \n", currentProc->id, getClk());
-                        StopCurrentProcess(); // stop the curr process
-                        printf("enqueue, id: %d\n", currentProc->id);
-                        enqueue(&q1, *currentProc);
-                        free(currentProc); // free currentProcess after enqueuing it
-                        if (cpuFree)
-                        { // if there is no currently a running process
+                        if (currentProc != NULL && pTemp->priority < currentProc->priority)
+                        {
+                            printf("The peeked process with prio = %d \n", pTemp->priority);
+                            // cpuFree = true; // if the process is stopped ...excute another one
+                            printf("Stopping, id: %d at clk %d \n", currentProc->id, getClk());
+                            StopCurrentProcess(); // stop the curr process
+                            printf("enqueue, id: %d\n", currentProc->id);
+                            enqueue(&q1, *currentProc);
+                            free(currentProc); // free currentProcess after enqueuing it
+                            // if (cpuFree)
+                            // if there is no currently a running process
                             currentProc = (Process *)malloc(sizeof(Process));
                             int flag = peek(&q1, currentProc);
                             if (flag >= 0 && processTable[currentProc->id - 1]->ID != -1) // if there is a process in the Q
@@ -272,6 +274,7 @@ int main(int argc, char *argv[])
                             }
                         }
                     }
+                    free(pTemp); // free the pTemp anyway
                 }
                 printf("pCount = %d \n", pCount);
             }
