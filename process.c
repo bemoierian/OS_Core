@@ -34,9 +34,9 @@ int main(int agrc, char *argv[])
         remainingtime = *ps_shmaddr;
         // remainingtime = ??;
     }
+    kill(getppid(), SIGUSR1); // send the signal to the schedular (parent)
     up(sem1);
     // printf("up the sem \n");
-    kill(getppid(), SIGUSR1); // send the signal to the schedular (parent)
     shmdt(ps_shmaddr);
     destroyClk(false);
     return 0;

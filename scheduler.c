@@ -300,54 +300,48 @@ int main(int argc, char *argv[])
                 {
                     printf("New Process Recieved \n");
                     receiveNewProcess(); // add the process to processTable
-                    enQueueCircularQueue(&q2, &message_recieved.m_process);
+                    enQueueCircularQueue(&q2, message_recieved.m_process);
                 }
             }
             if (cpuFree)
             {
-                Process *pTemp = (Process *)malloc(sizeof(Process));
-                bool flag = peekCircularQueue(&q2, pTemp);
+                // Process *pTemp = (Process *)malloc(sizeof(Process));
+                currentProc = (Process *)malloc(sizeof(Process));
+                bool flag = deQueueCircularQueue(&q2, currentProc);
                 if (flag)
                 {
                     // printf("entered flag to start\n");
                     // printf("PS %d, remaining time %d\n\n", currentProc->id, processTable[currentProc->id - 1]->remaingTime);
-                    if (processTable[pTemp->id - 1]->ID == -1) // new Process -> not forked yet
+                    if (processTable[currentProc->id - 1]->ID == -1) // new Process -> not forked yet
                     {
                         // Set remaining time in shared memory
-                        *ps_shmaddr = processTable[pTemp->id - 1]->remainingTime;
+                        *ps_shmaddr = processTable[currentProc->id - 1]->remainingTime;
                         // Set remaining time in semaphore
-                        setSemaphoreValue(sem1, processTable[pTemp->id - 1]->remainingTime - 1);
+                        setSemaphoreValue(sem1, processTable[currentProc->id - 1]->remainingTime - 1);
                         // setting the sem with remaining time -1 because we want to wait when the remaining time becomes 0 not when it becomes -1
                         // so we want to wait after decrementing it and it becomes zero
                         int pid = fork();
                         if (pid == 0) // child
                         {
-                            char processRunTime[2];                        // send the runTime of each
-                            sprintf(processRunTime, "%d", pTemp->runTime); // converts the int to string to sended in the arguments of the process
+                            char processRunTime[2];                              // send the runTime of each
+                            sprintf(processRunTime, "%d", currentProc->runTime); // converts the int to string to sended in the arguments of the process
                             execl("process.out", "process", processRunTime, NULL);
                         }
                         else // parent
                         {
-                            currentProc = (Process *)malloc(sizeof(Process));
-                            deQueueCircularQueue(&q2, currentProc);
-                            free(pTemp);
-                            // processTable[currentProc->id - 1] = (PCB *)malloc(sizeof(PCB));
                             cpuFree = false;             // we forked an new process so cpu it's not free
                             quantumStartTime = getClk(); // if there is a new process change the quantumStart as your starting point must change
                             StartCurrentProcess(pid);
-                            // printf("Start, id: %d\n", currentProc->id);
+                            printf("Start, id: %d\n", currentProc->id);
                         }
                     }
                     else
                     {
                         // resume the process
-                        *ps_shmaddr = processTable[pTemp->id - 1]->remainingTime;
+                        *ps_shmaddr = processTable[currentProc->id - 1]->remainingTime;
                         // Set remaining time in semaphore
-                        setSemaphoreValue(sem1, processTable[pTemp->id - 1]->remainingTime - 1);
-                        // printf("resume, id: %d\n", currentProc->id);
-                        currentProc = (Process *)malloc(sizeof(Process));
-                        deQueueCircularQueue(&q2, currentProc);
-                        free(pTemp);
+                        setSemaphoreValue(sem1, processTable[currentProc->id - 1]->remainingTime - 1);
+                        printf("resume, id: %d\n", currentProc->id);
                         quantumStartTime = getClk(); // if there is a new process change the quantumStart as your starting point must change
                         ResumeCurrentProcess();      // resume
                         cpuFree = false;             // if we resumed the next process the cpu is not free
@@ -355,7 +349,7 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    free(pTemp);
+                    free(currentProc);
                 }
             }
 
@@ -365,7 +359,6 @@ int main(int argc, char *argv[])
                 printf("%d -> %d \n", prevClk, currClk);
                 displayCircularQueue(&q2);
                 prevClk = currClk;
-                // al mafrod a3ml dec le al remaining time amta ????????????????????????
                 if (!cpuFree) // there is a running process -> dec its running time
                 {
                     decRemainingTimeOfCurrPs(); // dec the remaining time in process Table
@@ -386,7 +379,7 @@ int main(int argc, char *argv[])
                         {
                             // printf("New Process Recieved \n");
                             receiveNewProcess(); // add the process to processTable
-                            enQueueCircularQueue(&q2, &message_recieved.m_process);
+                            enQueueCircularQueue(&q2, message_recieved.m_process);
                         }
                     }
                     // printf("cpu is not free and the size = 0 that means there is only one running process\n");
@@ -400,9 +393,9 @@ int main(int argc, char *argv[])
                     if (flag)
                     {
                         // here we will stop the currProcess and resume the next one so the cpu is not free
-                        // printf("entered flag to resume\n");
-                        // printf("PS %d, remaining time %d\n\n", currentProc->id, processTable[currentProc->id - 1]->remaingTime);
+                        printf("entered flag to resume\n");
                         StopCurrentProcess(); // stop the current process
+                        cpuFree = true;       // we stopped the curr process so the cpu is free
                         // receive any sent process
                         for (size_t i = 0; i < numberOfProcesses; i++) // to recieve all process sent at this time
                         {
@@ -413,18 +406,17 @@ int main(int argc, char *argv[])
                             {
                                 // printf("New Process Recieved \n");
                                 receiveNewProcess(); // add the process to processTable
-                                enQueueCircularQueue(&q2, &message_recieved.m_process);
+                                enQueueCircularQueue(&q2, message_recieved.m_process);
                             }
                         }
-                        enQueueCircularQueue(&q2, currentProc);    // enqueue the the stopped process to the ready queue
-                        cpuFree = true;                            // we stopped the curr process so the cpu is free
+                        enQueueCircularQueue(&q2, *currentProc);   // enqueue the the stopped process to the ready queue
                         if (processTable[pTemp->id - 1]->ID != -1) // old process -> forked before
                         {
                             // Set remaining time in shared memory
                             *ps_shmaddr = processTable[pTemp->id - 1]->remainingTime;
                             // Set remaining time in semaphore
                             setSemaphoreValue(sem1, processTable[pTemp->id - 1]->remainingTime - 1);
-                            // printf("resume, id: %d\n", currentProc->id);
+                            printf("resume, id: %d\n", currentProc->id);
                             currentProc = (Process *)malloc(sizeof(Process));
                             deQueueCircularQueue(&q2, currentProc);
                             free(pTemp);

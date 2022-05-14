@@ -296,24 +296,26 @@ bool isCircularQueueEmpty(CircularQueue *q)
 }
 
 // Adding an element
-bool enQueueCircularQueue(CircularQueue *q, Process *element)
+bool enQueueCircularQueue(CircularQueue *q, Process element)
 {
-    if (element != NULL)
+    printf("Enter Enqueue \n");
+    // if (element != NULL)byo2f hna leeeeeeeeeeeeeeh ?
+    // {
+    // printf("\n Inserted process ID -> %d", element->id);
+    if (!isCircularQueueFull(q))
     {
-        if (!isCircularQueueFull(q))
-        {
-            if (q->front == -1)
-                q->front = 0;
-            q->rear = (q->rear + 1) % q->maxSize;
-            q->items[q->rear].arrivalTime = element->arrivalTime;
-            q->items[q->rear].id = element->id;
-            q->items[q->rear].priority = element->priority;
-            q->items[q->rear].runTime = element->runTime;
-            // printf("\n Inserted process ID -> %d", element.id);
-        }
+        if (q->front == -1)
+            q->front = 0;
+        q->rear = (q->rear + 1) % q->maxSize;
+        q->items[q->rear].arrivalTime = element.arrivalTime;
+        q->items[q->rear].id = element.id;
+        q->items[q->rear].priority = element.priority;
+        q->items[q->rear].runTime = element.runTime;
         q->size++;
         return true;
     }
+    // }
+
     return false;
 }
 
