@@ -104,6 +104,7 @@
         "typeindex": "c",
         "typeinfo": "c",
         "variant": "c",
-        "version": "c"
+        "version": "c",
+        "math.h": "c"
     }
 }

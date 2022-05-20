@@ -32,10 +32,12 @@ int msgq_id;
 // variable indicates to finish time
 int finishTime;
 //----pointer to the output file----
-FILE *ptr;
+FILE *ptr, *ptrM;
+// avialable memo
+int availMemo = 1024; // to indicate for list of 1024-holes as it max will be one hole
 // total memeory
-int availMemo = 1024; // byte
 const int totalMemo = 1024;
+
 // Functions Declarations
 void processTerminate(int sigID);
 void WriteOutputLine(FILE *ptr, int time, int process_id, char *state, int arr, int total, int reamain, int wait, int TA, float WTA);
@@ -55,7 +57,8 @@ void destroyPCB(int numberOfProcesses);
 
 int main(int argc, char *argv[])
 {
-    ptr = fopen("memory.log", "w");
+    ptr = fopen("scheduler.log", "w");
+    ptrM = fopen("memory.log", "w");
     fprintf(ptr, "#At time x allocated y bytes for process z from i to j");
     initClk();
     printf("Entered schedular\n");
@@ -69,12 +72,19 @@ int main(int argc, char *argv[])
     printf("runTime Time = %d \n", total_runtime);
 
     // the process table of the OS
-    processTable = malloc(sizeof(PCB *) * numberOfProcesses);
+    processTable = (PCB **)malloc(sizeof(PCB *) * numberOfProcesses);
     WTA = (float *)malloc(sizeof(float) * numberOfProcesses);
     Wait = (float *)malloc(sizeof(float) * numberOfProcesses);
     // the queues used in scheduling depends on the type of the algorithm
     PriorityQueue q1;
     CircularQueue q2;
+    // creating list(priority queue)of each size of memory from 512 till 32
+    PriorityQueue h512, h256, h128, h64, h32;
+    createPriorityQ(&h512, 2);
+    createPriorityQ(&h256, 4);
+    createPriorityQ(&h128, 8);
+    createPriorityQ(&h64, 16);
+    createPriorityQ(&h32, 32);
     //-----------SHARED MEMORY BETWEEN SCHEDULER AND RUNNING PROCESS-----------
     initSharedMemory(&ps_shmid, PS_SHM_KEY, &ps_shmaddr);
     //--------------------------------------------------------------------------
@@ -492,9 +502,9 @@ void processTerminate(int sigID)
     pCount++;       // to count the finished processes
     strcpy(processTable[currentProc->id - 1]->state, "finished");
 
-    // int TA = getClk() - currentProc->arrivalTime;
-    // WTA[currentProc->id - 1] = (float)TA / processTable[currentProc->id - 1]->execTime; // Array of WTA of each process
-    // Wait[currentProc->id - 1] = processTable[currentProc->id - 1]->totWaitTime;         // Array of WTA of each process
+    int TA = getClk() - currentProc->arrivalTime;
+    WTA[currentProc->id - 1] = (float)TA / processTable[currentProc->id - 1]->execTime; // Array of WTA of each process
+    Wait[currentProc->id - 1] = processTable[currentProc->id - 1]->totWaitTime;         // Array of WTA of each process
     // processTable[currrentProc.id - 1].totWaitTime = TA - processTable[currrentProc.id - 1].execTime;
     WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1]->state, currentProc->arrivalTime,
                     currentProc->runTime, processTable[currentProc->id - 1]->remainingTime, processTable[currentProc->id - 1]->totWaitTime, TA, WTA[currentProc->id - 1]);
@@ -615,6 +625,7 @@ void receiveNewProcess()
     processTable[message_recieved.m_process.id - 1]->priority = message_recieved.m_process.priority;
     processTable[message_recieved.m_process.id - 1]->execTime = message_recieved.m_process.runTime;
     processTable[message_recieved.m_process.id - 1]->ID = -1;
+    processTable[message_recieved.m_process.id - 1]->size = message_recieved.m_process.size;
     // printf("Function receive \n");
     strcpy(processTable[message_recieved.m_process.id - 1]->state, "ready");
     processTable[message_recieved.m_process.id - 1]->remainingTime = message_recieved.m_process.runTime; // initail remaining Time

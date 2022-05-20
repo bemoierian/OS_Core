@@ -23,7 +23,8 @@ typedef short bool;
 #define MSGKEY 301
 #define PS_SHM_KEY 402
 #define SEM1_KEY 450
-
+// min memory allocated for a process
+#define MIN_MEMO 32 // 2^5
 ///==============================
 // don't mess with this variable//
 int *shmaddr; //

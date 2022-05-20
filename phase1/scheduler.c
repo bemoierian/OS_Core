@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
     printf("runTime Time = %d \n", total_runtime);
 
     // the process table of the OS
-    processTable = malloc(sizeof(PCB *) * numberOfProcesses);
+    processTable = (PCB **)malloc(sizeof(PCB *) * numberOfProcesses);
     WTA = (float *)malloc(sizeof(float) * numberOfProcesses);
     Wait = (float *)malloc(sizeof(float) * numberOfProcesses);
     // the queues used in scheduling depends on the type of the algorithm
