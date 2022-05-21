@@ -33,8 +33,8 @@ int msgq_id;
 int finishTime;
 //----pointer to the output file----
 FILE *ptr, *ptrM;
-// avialable memo
-int availMemo = 1024; // to indicate for list of 1024-holes as it max will be one hole
+// Global vector of vector of pairs to store address ranges available in free list
+vector free_list;
 // total memeory
 const int totalMemo = 1024;
 
@@ -57,8 +57,28 @@ void destroyPCB(int numberOfProcesses);
 
 int main(int argc, char *argv[])
 {
-    ptr = fopen("scheduler.log", "w");
+    // initialize the free_list of the memory
+    vector_init(&free_list, 6);
+    for (size_t i = 0; i < 6; i++)
+    { // each list of a certain size has a max size it won't exceed
+        // free_list[i] = (pair *)malloc(sizeof(pair) * pow(2, 5 - i)); // free_list[0] is list of 32B and free_list[5] is 1024kB
+        // to know if this pair is empty or not
+        // free_list[i]->startingAdd = -1;
+        // free_list[i]->endAdd = -1;
+        vector temp;
+        vector_init(&temp, pow(2, 5 - i));
+        vector_add(&free_list, &temp);
+    }
+    // before allocating any process the starting address and ending address of the only of one block (0,1023)
+    // free_list[5]->startingAdd = 0;
+    // free_list[5]->endAdd = 1023;
+    pair *myPair = (pair *)malloc(sizeof(pair));
+    myPair->startingAdd = 0;
+    myPair->endAdd = 1023;
+    vector_add(vector_get(&free_list, 5), myPair);
+
     ptrM = fopen("memory.log", "w");
+    ptr = fopen("scheduler.log", "w");
     fprintf(ptr, "#At time x allocated y bytes for process z from i to j");
     initClk();
     printf("Entered schedular\n");
@@ -79,12 +99,12 @@ int main(int argc, char *argv[])
     PriorityQueue q1;
     CircularQueue q2;
     // creating list(priority queue)of each size of memory from 512 till 32
-    PriorityQueue h512, h256, h128, h64, h32;
-    createPriorityQ(&h512, 2);
-    createPriorityQ(&h256, 4);
-    createPriorityQ(&h128, 8);
-    createPriorityQ(&h64, 16);
-    createPriorityQ(&h32, 32);
+    // PriorityQueue h512, h256, h128, h64, h32;
+    // createPriorityQ(&h512, 2);
+    // createPriorityQ(&h256, 4);
+    // createPriorityQ(&h128, 8);
+    // createPriorityQ(&h64, 16);
+    // createPriorityQ(&h32, 32);
     //-----------SHARED MEMORY BETWEEN SCHEDULER AND RUNNING PROCESS-----------
     initSharedMemory(&ps_shmid, PS_SHM_KEY, &ps_shmaddr);
     //--------------------------------------------------------------------------

@@ -52,14 +52,6 @@ void initClk()
     shmaddr = (int *)shmat(shmid, (void *)0, 0);
 }
 
-/*
- * All process call this function at the end to release the communication
- * resources between them and the clock module.
- * Again, Remember that the clock is only emulation!
- * Input: terminateAll: a flag to indicate whether that this is the end of simulation.
- *                      It terminates the whole system and releases resources.
- */
-
 void destroyClk(bool terminateAll)
 {
     shmdt(shmaddr);
@@ -68,6 +60,104 @@ void destroyClk(bool terminateAll)
         killpg(getpgrp(), SIGINT);
     }
 }
+
+// vector implementation
+typedef struct vector
+{
+    void **items;
+    int maxSize;
+    int size;
+} vector;
+
+void vector_init(vector *v, int s)
+{
+    v->maxSize = s;
+    v->size = 0;
+    v->items = malloc(sizeof(void *) * v->maxSize);
+}
+
+int vector_size(vector *v)
+{
+    return v->size;
+}
+
+static void vector_resize(vector *v, int maxSize)
+{
+#ifdef DEBUG_ON
+    printf("vector_resize: %d to %d\n", v->maxSize, maxSize);
+#endif
+
+    void **items = realloc(v->items, sizeof(void *) * maxSize);
+    if (items)
+    {
+        v->items = items;
+        v->maxSize = maxSize;
+    }
+}
+bool vactor_isFull(vector *v)
+{
+    if (v->maxSize == v->size)
+        return true;
+    return false;
+}
+bool vector_isEmpty(vector *v)
+{
+    if (v->size == 0)
+    {
+        return true;
+    }
+    return false;
+}
+void vector_add(vector *v, void *item)
+{
+    if (v->maxSize == v->size)
+        vector_resize(v, v->maxSize * 2);
+    v->items[v->size++] = item;
+}
+
+void vector_set(vector *v, int index, void *item)
+{
+    if (index >= 0 && index < v->size)
+        v->items[index] = item;
+}
+
+void *vector_get(vector *v, int index)
+{
+    if (index >= 0 && index < v->size)
+        return v->items[index];
+    return NULL;
+}
+
+void vector_delete(vector *v, int index)
+{
+    if (index < 0 || index >= v->size)
+        return;
+
+    v->items[index] = NULL;
+    int i;
+    for (i = 0; i < v->size - 1; i++)
+    {
+        v->items[i] = v->items[i + 1];
+        v->items[i + 1] = NULL;
+    }
+
+    v->size--;
+
+    if (v->size > 0 && v->size == v->maxSize / 4)
+        vector_resize(v, v->maxSize / 2);
+}
+
+void vector_free(vector *v)
+{
+    free(v->items);
+}
+
+// pair definition
+typedef struct Pair
+{
+    int startingAdd;
+    int endAdd;
+} pair;
 
 //--------------SEMAPHORES---------------
 union Semun
