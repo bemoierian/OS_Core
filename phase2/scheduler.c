@@ -98,13 +98,6 @@ int main(int argc, char *argv[])
     // the queues used in scheduling depends on the type of the algorithm
     PriorityQueue q1;
     CircularQueue q2;
-    // creating list(priority queue)of each size of memory from 512 till 32
-    // PriorityQueue h512, h256, h128, h64, h32;
-    // createPriorityQ(&h512, 2);
-    // createPriorityQ(&h256, 4);
-    // createPriorityQ(&h128, 8);
-    // createPriorityQ(&h64, 16);
-    // createPriorityQ(&h32, 32);
     //-----------SHARED MEMORY BETWEEN SCHEDULER AND RUNNING PROCESS-----------
     initSharedMemory(&ps_shmid, PS_SHM_KEY, &ps_shmaddr);
     //--------------------------------------------------------------------------
@@ -687,4 +680,37 @@ void destroyPCB(int numberOfProcesses)
         }
     }
     free(processTable);
+}
+bool allocate(int sz)
+{
+    int n = ceil(log(sz) / log(2));                // nearest power of 2 to the passed size
+    n -= 5;                                        // 34an azbt dal index bta3 al vector
+    if (vector_isEmpty(vector_get(&free_list, n))) // lo siZe al list ali na 3aiza zero ro7 le al list al akbr
+    {
+        int i;
+        for (i = n + 1; i < totalMemo; i++)
+        {
+            if (!vector_isEmpty(vector_get(&free_list, i)))
+            {
+                break;
+            }
+        }
+        if (i == totalMemo)
+        {
+            // I can't allocate as there is no free space WHAT SHOULD I DO ???
+        }
+        else
+        { // if I found empty place
+            pair *temp;
+            temp = vector_get(vector_get(&free_list, i), 0);
+            vector_delete(vector_get(&free_list, i), 0);
+        }
+    }
+    else // lo size al list ali na 3aizha m4 zero hadawer feha
+    {
+        pair *temp;
+        temp = vector_get(vector_get(&free_list, n), 0);
+        vector_delete(vector_get(&free_list, n), 0);
+        printf("Memory from %d to %d allocated\n", temp->startingAdd, temp->endAdd);
+    }
 }
