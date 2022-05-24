@@ -684,11 +684,11 @@ void destroyPCB(int numberOfProcesses)
 bool allocate(int sz)
 {
     int n = ceil(log(sz) / log(2));                // nearest power of 2 to the passed size
-    n -= 5;                                        // 34an azbt dal index bta3 al vector
+    n -= 5;                                        // 34an azbt dal index bta3 al vector 3la al min ali na 7ato
     if (vector_isEmpty(vector_get(&free_list, n))) // lo siZe al list ali na 3aiza zero ro7 le al list al akbr
     {
         int i;
-        for (i = n + 1; i < totalMemo; i++)
+        for (i = n + 1; i < 6; i++) // lo al list ali na feha fadya ro7 al al list al akbr till you find empty list
         {
             if (!vector_isEmpty(vector_get(&free_list, i)))
             {
@@ -703,14 +703,16 @@ bool allocate(int sz)
         { // if I found empty place
             pair *temp;
             temp = vector_get(vector_get(&free_list, i), 0);
-            vector_delete(vector_get(&free_list, i), 0);
+            vector_delete(vector_get(&free_list, i), 0); // as I take the frist
+            // now I need to divide the block into 2 halves and put them in the right vector in free_list vector
+            // then remove the first free block to be divided more if needed
         }
     }
     else // lo size al list ali na 3aizha m4 zero hadawer feha
     {
         pair *temp;
         temp = vector_get(vector_get(&free_list, n), 0);
-        vector_delete(vector_get(&free_list, n), 0);
+        vector_delete(vector_get(&free_list, n), 0); // as I take the frist place
         printf("Memory from %d to %d allocated\n", temp->startingAdd, temp->endAdd);
     }
 }
