@@ -34,11 +34,11 @@ int finishTime;
 //----pointer to the output file----
 FILE *ptr, *ptrM;
 // Global vector of vector of pairs to store address ranges available in free list
-vector free_list;
+vector free_list; // we will use this vector as queue
 // total memeory
 const int totalMemo = 1024;
 // queue to store the process that has no place in memo ...we will use single queue as it's better for utilization
-// Queue waitQ;
+vector waitQ;
 // Functions Declarations
 void processTerminate(int sigID);
 void WriteOutputLine(FILE *ptr, int time, int process_id, char *state, int arr, int total, int reamain, int wait, int TA, float WTA);
@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
     printf("runTime Time = %d \n", total_runtime);
 
     // initialize the waiting queue for the processes that have no room in the memory
-    // createQ(&waitQ, numberOfProcesses - 1); // max number of processes regardless the sizes of the processes = numberOfProcesses - 1
+    vector_init(&waitQ, numberOfProcesses - 1); // max number of processes regardless the sizes of the processes = numberOfProcesses - 1
 
     // the process table of the OS
     processTable = (PCB **)malloc(sizeof(PCB *) * numberOfProcesses);
@@ -491,20 +491,24 @@ int main(int argc, char *argv[])
 
     printf("scheduler is finishing \n");
     fclose(ptr); // close the file at the end
-    // ptr = fopen("scheduler.perf", "w");
-    // printf("finish Time = %d \n", finishTime);
-    // printf("runTime Time = %d \n", total_runtime);
-    // float CPUutilisation = ((float)total_runtime / finishTime) * 100;
-    // float AvgWTA = AVG(WTA, numberOfProcesses);
-    // float AvgWait = AVG(Wait, numberOfProcesses);
-    // float StdWTA = StandardDeviation(WTA, numberOfProcesses);
-    // WriteFinalOutput(CPUutilisation, AvgWTA, AvgWait, StdWTA);
-    // fclose(ptr); // close the file at the end
+    // printing the scheduler.pref
+    ptr = fopen("scheduler.perf", "w");
+    printf("finish Time = %d \n", finishTime);
+    printf("runTime Time = %d \n", total_runtime);
+    float CPUutilisation = ((float)total_runtime / finishTime) * 100;
+    float AvgWTA = AVG(WTA, numberOfProcesses);
+    float AvgWait = AVG(Wait, numberOfProcesses);
+    float StdWTA = StandardDeviation(WTA, numberOfProcesses);
+    WriteFinalOutput(CPUutilisation, AvgWTA, AvgWait, StdWTA);
+    fclose(ptr); // close the file at the end
     // deattach shared memory
     shmdt(ps_shmaddr);
     // free wta
     free(WTA);
     free(Wait);
+    // free vectors
+    vector_free(&free_list);
+    vector_free(&waitQ);
     // free process table
     destroyPCB(numberOfProcesses);
     // upon termination release the clock resources.
@@ -703,7 +707,7 @@ bool allocate(int sz)
         if (i == totalMemo)
         {
             // I can't allocate as there is no free space WHAT SHOULD I DO ???
-            // enqueue(&waitQ, message_recieved.m_process);
+            vector_add(&waitQ, &message_recieved.m_process);
         }
         else
         { // if I found empty place
