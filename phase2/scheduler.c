@@ -12,11 +12,12 @@ typedef struct processControlBlock
     int priority;
     int cumulativeTime; //  cumulative runtime of the process
     int lastClk;        // to represent the last clk the process was warking in
-    int size;
+    int startAddres;    // start address and end address of the process
+    int endAddress;
 } PCB;
 ////////////////////
 int pCount = 0;              // counter to know if all processes finished
-bool cpuFree = true;         // indicates that the cpu is free to excute a process
+bool cpuFree = true;         // indi    cates that the cpu is free to excute a process
 Process *currentProc = NULL; // the currently running process
 PCB **processTable;          // the process table of the OS
 float *WTA;
@@ -195,6 +196,7 @@ int main(int argc, char *argv[])
                 if (num_messages > 0)
                 {
                     printf("New Process Recieved \n");
+                    // allocate
                     receiveNewProcess();
                     message_recieved.m_process.priority = message_recieved.m_process.runTime;
                     enqueue(&q1, message_recieved.m_process);
@@ -728,4 +730,8 @@ bool allocate(int sz)
         isAllocated = true;
     }
     return isAllocated;
+}
+
+bool deallocate() // no param passed as we access the pcb using the id of currProcess
+{
 }
