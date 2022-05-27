@@ -57,7 +57,7 @@ void setSemaphoreValue(int sem, int value);
 void receiveNewProcess();
 void destroyPCB(int numberOfProcesses);
 void WritMemoryLine(FILE *ptr, int time, int size, int proc, int start_Add, int end_Add, char *state);
-bool allocate(int sz);
+bool allocate(Process );
 void deallocate();
 
 int main(int argc, char *argv[])
@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
                     printf("New Process Recieved \n");
                     receiveNewProcess();
                     // call allocate and check if allocated then enqueue
-                    if (allocate(message_recieved.m_process.size))
+                    if (allocate(message_recieved.m_process))
                     {
                         printf("IN ALOCATE!!!!!!!!!!!\n");
                         enqueue(&q1, message_recieved.m_process);
@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
                 // printf("cpu free\n");
                 currentProc = (Process *)malloc(sizeof(Process));
                 bool flag = dequeue(&q1, currentProc);
-                // printf("flag is %d \n", flag);
+                printf("flag is %d ________________\n", flag);
                 if (flag)
                 {
                     int pid = fork();
@@ -184,7 +184,8 @@ int main(int argc, char *argv[])
                         execl("process.out", "process", processRunTime, NULL);
                     }
                     else
-                    {                    // parent
+                    {       
+                         printf("IN START ________________\n");             // parent
                         cpuFree = false; // now the cpu is busy
                         StartCurrentProcess(pid);
                         printf("PS %d, remaining time %d\n\n", currentProc->id, processTable[currentProc->id - 1]->remainingTime);
@@ -220,7 +221,7 @@ int main(int argc, char *argv[])
                     receiveNewProcess();
                     message_recieved.m_process.priority = message_recieved.m_process.runTime;
                     // call allocate and check if allocated then enqueue
-                    if (allocate(message_recieved.m_process.size))
+                    if (allocate(message_recieved.m_process))
                     {
                         printf("IN ALOCATE!!!!!!!!!!!\n");
                         enqueue(&q1, message_recieved.m_process);
@@ -299,7 +300,7 @@ int main(int argc, char *argv[])
                             receiveNewProcess();
                             message_recieved.m_process.priority = message_recieved.m_process.runTime;
                             // call allocate and check if allocated then enqueue
-                            if (allocate(message_recieved.m_process.size))
+                            if (allocate(message_recieved.m_process))
                             {
                                 printf("IN ALOCATE!!!!!!!!!!!\n");
                                 enqueue(&q1, message_recieved.m_process);
@@ -382,7 +383,7 @@ int main(int argc, char *argv[])
                     printf("New Process Recieved \n");
                     receiveNewProcess(); // add the process to processTable
                                          // call allocate and check if allocated then enqueue
-                    if (allocate(message_recieved.m_process.size))
+                    if (allocate(message_recieved.m_process))
                     {
                         printf("IN ALOCATE!!!!!!!!!!!\n");
                         enQueueCircularQueue(&q2, message_recieved.m_process);
@@ -466,7 +467,7 @@ int main(int argc, char *argv[])
                         {
                             // printf("New Process Recieved \n");
                             receiveNewProcess(); // add the process to processTable
-                            if (allocate(message_recieved.m_process.size))
+                            if (allocate(message_recieved.m_process))
                             {
                                 printf("IN ALOCATE!!!!!!!!!!!\n");
                                 enQueueCircularQueue(&q2, message_recieved.m_process);
@@ -506,7 +507,7 @@ int main(int argc, char *argv[])
                             {
                                 // printf("New Process Recieved \n");
                                 receiveNewProcess(); // add the process to processTable
-                                if (allocate(message_recieved.m_process.size))
+                                if (allocate(message_recieved.m_process))
                                 {
                                     printf("IN ALOCATE!!!!!!!!!!!\n");
                                     enQueueCircularQueue(&q2, message_recieved.m_process);
@@ -591,7 +592,10 @@ void processTerminate(int sigID)
     // processTable[currrentProc.id - 1].totWaitTime = TA - processTable[currrentProc.id - 1].execTime;
     WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1]->state, currentProc->arrivalTime,
                     currentProc->runTime, processTable[currentProc->id - 1]->remainingTime, processTable[currentProc->id - 1]->totWaitTime, TA, WTA[currentProc->id - 1]);
-    deallocate(); // deallocate the currprocess from the memo
+    //deallocate(); // deallocate the currprocess from the memo
+    int s= processTable[currentProc->id - 1]->endAddress-processTable[currentProc->id - 1]->startAddres+1;
+    // WritMemoryLine(ptrM, getClk(), s, currentProc->id, processTable[currentProc->id - 1]->startAddres, processTable[currentProc->id - 1]->endAddress, processTable[currentProc->id - 1]->state);
+                              
     TerminateCurrentProcess();
     signal(SIGUSR1, processTerminate); // attach the function to SIGUSR1
 }
@@ -655,6 +659,7 @@ void StartCurrentProcess(int pid)
     processTable[currentProc->id - 1]->responseTime = processTable[currentProc->id - 1]->startTime - currentProc->arrivalTime;
     processTable[currentProc->id - 1]->totWaitTime = processTable[currentProc->id - 1]->responseTime; // initialised here and will be increased later
     // setting the response and the waiting time with the same value as it's non-preemptive
+    printf("IN STARTCURRENT^^^^^^^^^^^^^^^^^^^^^\n");
     WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1]->state, currentProc->arrivalTime,
                     currentProc->runTime, processTable[currentProc->id - 1]->remainingTime, processTable[currentProc->id - 1]->totWaitTime, 0, 0);
     printf("Start, id: %d\n", currentProc->id);
@@ -758,10 +763,10 @@ void destroyPCB(int numberOfProcesses)
     }
     free(processTable);
 }
-bool allocate(int sz)
+bool allocate(Process proces)
 {
     bool isAllocated = false;
-    int n = ceil(log(sz) / log(2)); // nearest power of 2 to the passed size
+    int n = ceil(log(proces.size) / log(2)); // nearest power of 2 to the passed size
     n -= 4;                         // 34an azbt dal index bta3 al vector 3la al min ali na 7ato
     int i = n;
     while (i < 7 && ListEmpty(vector_get(&free_list, i))) // there is no holes
@@ -770,7 +775,7 @@ bool allocate(int sz)
     }
     if (i > 7) // insert in waitQ if there is no holes available
     {
-        InsertList(waitQ.size, &message_recieved.m_process, &waitQ); // insert the process in the wait queue
+        InsertList(waitQ.size, &proces, &waitQ); // insert the process in the wait queue
     }
     else // there is a hole available
     {
@@ -802,8 +807,8 @@ bool allocate(int sz)
             DeleteList_pair(0, hole, vector_get(&free_list, j));
             printf("add of hole = %d\n", hole->startingAdd);
         }
-        processTable[message_recieved.m_process.id - 1]->startAddres = hole->startingAdd;
-        processTable[message_recieved.m_process.id - 1]->endAddress = hole->startingAdd + hole->size - 1;
+        processTable[proces.id - 1]->startAddres = hole->startingAdd;
+        processTable[proces.id - 1]->endAddress = hole->startingAdd + hole->size - 1;
         isAllocated = true;
     }
     return isAllocated;
@@ -817,26 +822,63 @@ void deallocate() // no param passed as we access the pcb using the id of currPr
     pair *newHole = (pair *)malloc(sizeof(pair));
     newHole->startingAdd = processTable[currentProc->id - 1]->startAddres;
     newHole->size = sz;
-    int j = InsertList_pair(newHole, vector_get(&free_list, i)); // add the hole to the list
+   
+
+for(int m=i;m<7;m++)
+{
+ int j = InsertList_pair(newHole, vector_get(&free_list, i)); // add the hole to the list
     Node *pre = NULL, *nxt = NULL;
     int listSize = ListSize((List *)vector_get(&free_list, i));
     RetrieveList_Node(j - 1, pre, vector_get(&free_list, i));
     RetrieveList_Node(j + 1, nxt, vector_get(&free_list, i));
-
     if (pre)
     {
         if ((((pair *)pre->entry)->startingAdd / listSize) % 2 == 0)
-        {
+        {//0 1 2 3
             // merge
-            // DeleteList_pair();
-            for (size_t i = 0; i < count; i++)
-            {
-                /* code */
-            }
+             DeleteList_pair(j-1,NULL,vector_get(&free_list, i));
+             DeleteList_pair(j-1,NULL,vector_get(&free_list, i));
+              pair *newHole2 = (pair *)malloc(sizeof(pair));
+              newHole2->startingAdd = ((pair *)pre->entry)->startingAdd;
+                newHole2->size = (newHole->size)*2;
+               
+                newHole=newHole2;
+              
+            continue;
         }
+       
     }
-    if (/* condition */)
+    if (nxt)
     {
-        /* code */
+        if ((((pair *)nxt->entry)->startingAdd / listSize) % 2 != 0)
+        {//0 1 2 3
+        //0  16  32 64
+            // merge
+             DeleteList_pair(j,NULL,vector_get(&free_list, i));
+             DeleteList_pair(j,NULL,vector_get(&free_list, i));
+              pair *newHole2 = (pair *)malloc(sizeof(pair));
+            //   newHole2->startingAdd = ((pair *)nxt->entry)->startingAdd-sz;
+              newHole2->startingAdd = newHole->startingAdd;
+                 newHole2->size = (newHole->size)*2;
+                newHole=newHole2;
+               
+            continue;
+        }
+       
     }
+
+    
+    break;
+    
+}
+
+Node *tempo = waitQ.head;
+    while (tempo)
+    {
+        if(allocate(*((Process*)tempo->entry)))
+        break;
+
+        tempo =tempo->next;
+    }
+
 }
