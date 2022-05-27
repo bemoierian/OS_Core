@@ -153,60 +153,61 @@ void vector_free(vector *v)
     free(v->items);
 }
 
-// pair definition
-typedef struct Pair
-{
-    int startingAdd;
-    int endAdd; // or process size
-} pair;
-// LINKED LIST IMPLEMENTATION
-typedef struct listnode
-{
-    int entry;
-    struct listnode *next;
-} Node;
-typedef struct list
-{
-    Node *head;
-    int size;
-} List;
-
-void CreateList(List *pl)
-{
-    pl->head = NULL;
-    pl->size = 0;
-}
-
-int ListEmpty(List *pl)
-{
-    return (pl->size == 0);
-    // or return !pl->head
-}
-
-int ListSize(List *pl)
-{
-    return pl->size;
-}
-void DestroyList(List *pl)
-{
-    Node *q;
-    while (pl->head)
+    // pair definition
+    typedef struct Pair
     {
-        q = pl->head->next;
-        free(pl->head);
-        pl->head = q;
-    }
-    pl->size = 0;
-}
-void TraverseList(List *pl, void (*Visit)(int)) // frist param is list and second param is the funstion to raverse over the linked list
-{                                               // data type of the func param
-    Node *p = pl->head;
-    while (p)
+        int startingAdd;
+        int size; // or process size
+    } pair;
+    // LINKED LIST IMPLEMENTATION
+    typedef struct listnode
     {
-        (*Visit)(p->entry);
-        p = p->next;
+        void *entry;
+        struct listnode *next;
+    } Node;
+    typedef struct list
+    {
+        Node *head;
+        int size;
+    } List;
+
+    void CreateList(List *pl)
+    {
+        pl->head = NULL;
+        pl->size = 0;
     }
-    int InsertList(int pos, int e, List *pl)
+
+    int ListEmpty(List *pl)
+    {
+        return (pl->size == 0);
+        // or return !pl->head
+    }
+
+    int ListSize(List *pl)
+    {
+        return pl->size;
+    }
+    void DestroyList(List *pl)
+    {
+        Node *q;
+        while (pl->head)
+        {
+            q = pl->head->next;
+            free(pl->head);
+            pl->head = q;
+        }
+        pl->size = 0;
+    }
+    void TraverseList(List *pl, void (*Visit)(void *)) // frist param is list and second param is the funstion to raverse over the linked list
+    {                                               // data type of the func param
+        Node *p = pl->head;
+        while (p)
+        {
+            (*Visit)(p->entry);
+            p = p->next;
+        }
+    }
+    bool InsertList(int pos, void * e, List *pl)
     {
         Node *p, *q;
         int i;
@@ -228,12 +229,12 @@ void TraverseList(List *pl, void (*Visit)(int)) // frist param is list and secon
                 q->next = p;
             }
             pl->size++;
-            return 1;
+            return true;
         }
         else
-            return 0;
+            return false;
     }
-    void DeleteList(int pos, int *pe, List *pl)
+    void DeleteList_process(int pos, Process *pe, List *pl)
     {
         int i;
         Node *q, *tmp;
@@ -258,16 +259,42 @@ void TraverseList(List *pl, void (*Visit)(int)) // frist param is list and secon
         pl->size--;
     } // O(n) but without shifting elements.
 
-    void RetrieveList(int pos, int *pe, List *pl)
+    void DeleteList_pair(int pos, pair *pe, List *pl)
     {
         int i;
-        Node *q;
-        for (q = pl->head, i = 0; i < pos; i++)
-            q = q->next;
-        *pe = q->entry;
-    }
+        Node *q, *tmp;
 
-    void ReplaceList(int pos, int e, List *pl)
+        if (pos == 0)
+        {
+            *pe = pl->head->entry;
+            tmp = pl->head->next;
+            free(pl->head);
+            pl->head = tmp;
+        } // it works also for one node
+        else
+        {
+            for (q = pl->head, i = 0; i < pos - 1; i++)
+                q = q->next;
+
+            *pe = q->next->entry;
+            tmp = q->next->next;
+            free(q->next);
+            q->next = tmp;
+        } // check for pos=size-1 (tmp will be NULL)
+        pl->size--;
+    } // O(n) but without shifting elements.
+
+
+    // void RetrieveList(int pos, void *pe, List *pl)
+    // {
+    //     int i;
+    //     Node *q;
+    //     for (q = pl->head, i = 0; i < pos; i++)
+    //         q = q->next;
+    //     *pe = q->entry;
+    // }
+
+    void ReplaceList(int pos, void *e, List *pl)
     {
         int i;
         Node *q;

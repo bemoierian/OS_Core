@@ -39,7 +39,7 @@ vector free_list; // we will use this vector as queue
 // total memeory
 const int totalMemo = 1024;
 // queue to store the process that has no place in memo ...we will use single queue as it's better for utilization
-vector waitQ;
+List waitQ;
 // Functions Declarations
 void processTerminate(int sigID);
 void WriteOutputLine(FILE *ptr, int time, int process_id, char *state, int arr, int total, int reamain, int wait, int TA, float WTA);
@@ -60,15 +60,23 @@ void destroyPCB(int numberOfProcesses);
 int main(int argc, char *argv[])
 {
     // initialize the free_list of the memory
-    vector_init(&free_list, 6);
-    for (size_t i = 0; i < 6; i++)
+    vector_init(&free_list, 7);
+    // create vector of lists indeces:
+    // 0 - > 2^4 16
+    // 1 - > 2^5 32
+    // 2 - > 2^6 64
+    // 3 - > 2^7 128
+    // 4 - > 2^8 256
+    // 5 - > 2^9 512
+    // 6 - > 2^10 1024
+    for (size_t i = 0; i < 7; i++)
     { // each list of a certain size has a max size it won't exceed
         // free_list[i] = (pair *)malloc(sizeof(pair) * pow(2, 5 - i)); // free_list[0] is list of 32B and free_list[5] is 1024kB
         // to know if this pair is empty or not
         // free_list[i]->startingAdd = -1;
         // free_list[i]->endAdd = -1;
-        vector temp;
-        vector_init(&temp, pow(2, 5 - i));
+        List temp;
+        CreateList(&temp);
         vector_add(&free_list, &temp);
     }
     // before allocating any process the starting address and ending address of the only of one block (0,1023)
@@ -76,12 +84,13 @@ int main(int argc, char *argv[])
     // free_list[5]->endAdd = 1023;
     pair *myPair = (pair *)malloc(sizeof(pair));
     myPair->startingAdd = 0;
-    myPair->endAdd = 1023;
-    vector_add(vector_get(&free_list, 5), myPair);
+    myPair->size = 1024;
+    InsertList(0,myPair,vector_get(&free_list, 6));
+    
 
     ptrM = fopen("memory.log", "w");
     ptr = fopen("scheduler.log", "w");
-    fprintf(ptr, "#At time x allocated y bytes for process z from i to j");
+    fprintf(ptr, "#At time x allocated y bytes for process z from i to j\n");
     initClk();
     printf("Entered schedular\n");
     signal(SIGUSR1, processTerminate); // attach the function to SIGUSR1
@@ -132,7 +141,15 @@ int main(int argc, char *argv[])
                 {
                     printf("New Process Recieved \n");
                     receiveNewProcess();
-                    enqueue(&q1, message_recieved.m_process);
+                    //call allocate and check if allocated then enqueue
+                    if(allocate(message_recieved.m_process.size))
+                    {
+                        enqueue(&q1, message_recieved.m_process);
+                        int strtAdd = processTable[message_recieved.m_process.id - 1]->startAddres;
+                        int endAdd = processTable[message_recieved.m_process.id - 1]->endAddress;
+                        int s = endAdd - strtAdd + 1;
+                        WritMemoryLine(getClk(),s,message_recieved.m_process.id,strtAdd,endAdd,processTable[message_recieved.m_process.id - 1]->state);
+                    }
                 }
             }
             currClk = getClk();
@@ -556,7 +573,14 @@ void WriteOutputLine(FILE *ptr, int time, int process_id, char *state, int arr, 
         fprintf(ptr, "At time %d process %d %s arr %d total %d remain %d wait %d\n", time, process_id, state, arr, total, reamain, wait);
     fflush(ptr);
 }
-
+void WritMemoryLine(int time, int size, int proc , int start_Add, int end_Add,int state)
+{
+    if (!strcmp(state, "finished"))
+        fprintf(ptrM, "At time %d allocated %d bytes for process %d from %d to %d \n", time, size, proc, start_Add, end_Add);
+    else
+        fprintf(ptrM, "At time %d freed %d bytes for process %d from %d to %d \n", time, size, proc, start_Add, end_Add);
+    fflush(ptr);
+}
 void WriteFinalOutput(float cpuUtil, float AvgWTA, float AvgWait, float StdWTA)
 {
     fprintf(ptr, "CPU utilisation = %.2f %c\nAvg WTA = %.2f\nAvg Waiting = %.2f\nStd WTA = %.2f\n", cpuUtil, '%', AvgWTA, AvgWait, StdWTA);
@@ -695,38 +719,46 @@ bool allocate(int sz)
 {
     bool isAllocated = false;
     int n = ceil(log(sz) / log(2));                // nearest power of 2 to the passed size
-    n -= 5;                                        // 34an azbt dal index bta3 al vector 3la al min ali na 7ato
-    if (vector_isEmpty(vector_get(&free_list, n))) // lo siZe al list ali na 3aiza zero ro7 le al list al akbr
+    n -= 4;                                        // 34an azbt dal index bta3 al vector 3la al min ali na 7ato
+    int i = n;
+    while(i < 7 && ListEmpty(vector_get(&free_list, n)))       // there is no holes
     {
-        int i;
-        for (i = n + 1; i < 6; i++) // lo al list ali na feha fadya ro7 al al list al akbr till you find empty list
-        {
-            if (!vector_isEmpty(vector_get(&free_list, i)))
-            {
-                break;
-            }
-        }
-        if (i == totalMemo)
-        {
-            // I can't allocate as there is no free space WHAT SHOULD I DO ???
-            vector_add(&waitQ, &message_recieved.m_process);
-        }
-        else
-        { // if I found empty place
-            pair *temp;
-            temp = vector_get(vector_get(&free_list, i), 0);
-            vector_delete(vector_get(&free_list, i), 0); // as I take the frist
-            // now I need to divide the block into 2 halves and put them in the right vector in free_list vector
-            // then remove the first free block to be divided more if needed
-            isAllocated = true;
-        }
+        i++;
     }
-    else // lo size al list ali na 3aizha m4 zero hadawer feha
+    if(i >=7) //insert in waitQ if there is no holes available
     {
-        pair *temp;
-        temp = vector_get(vector_get(&free_list, n), 0);
-        vector_delete(vector_get(&free_list, n), 0); // as I take the frist place
-        printf("Memory from %d to %d allocated\n", temp->startingAdd, temp->endAdd);
+        InsertList(waitQ.size,&message_recieved.m_process,&waitQ); //insert the process in the wait queue
+    }
+    else //there is a hole available 
+    {
+        pair hole;
+        if(i == n)  // no dividing is needed
+        {
+            DeleteList_pair(0,&hole,vector_get(&free_list, i));
+        }
+        else // need to divide
+        {
+            int j;
+            for (j = i; j > n; j--)
+            {
+                DeleteList_pair(0,&hole,vector_get(&free_list, j));
+                List list = vector_get(&free_list, j-1);
+
+                pair half_1;
+                half_1.startingAdd = hole.startingAdd;
+                half_1.size = hole.size/2;
+                InsertList(list->size, &half_1, list);
+
+                pair half_2;
+                half_2.startingAdd = hole.startingAdd + hole.size/2;
+                half_2.size = hole.size/2;
+                InsertList(list->size, &half_2, list);
+                
+            }
+            DeleteList_pair(0,&hole,vector_get(&free_list, j+1));
+        }
+        processTable[message_recieved.m_process.id - 1]->startAddres = hole.startingAdd;
+        processTable[message_recieved.m_process.id - 1]->endAddress = hole.startingAdd + hole.size - 1;
         isAllocated = true;
     }
     return isAllocated;
