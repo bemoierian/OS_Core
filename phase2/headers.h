@@ -30,7 +30,15 @@ typedef short bool;
 // don't mess with this variable//
 int *shmaddr; //
 //===============================
-
+ // struct holds the process data
+    typedef struct processData
+    {
+        int id; // ID of the process
+        int arrivalTime;
+        int runTime;
+        int priority;
+        int size;
+    } Process;
 int getClk()
 {
     return *shmaddr;
@@ -241,7 +249,7 @@ void vector_free(vector *v)
 
         if (pos == 0)
         {
-            *pe = pl->head->entry;
+            *pe = *((Process*)pl->head->entry);
             tmp = pl->head->next;
             free(pl->head);
             pl->head = tmp;
@@ -251,7 +259,7 @@ void vector_free(vector *v)
             for (q = pl->head, i = 0; i < pos - 1; i++)
                 q = q->next;
 
-            *pe = q->next->entry;
+            *pe = *((Process*)q->next->entry);
             tmp = q->next->next;
             free(q->next);
             q->next = tmp;
@@ -266,7 +274,7 @@ void vector_free(vector *v)
 
         if (pos == 0)
         {
-            *pe = pl->head->entry;
+            *pe = *((pair*)pl->head->entry);
             tmp = pl->head->next;
             free(pl->head);
             pl->head = tmp;
@@ -276,7 +284,7 @@ void vector_free(vector *v)
             for (q = pl->head, i = 0; i < pos - 1; i++)
                 q = q->next;
 
-            *pe = q->next->entry;
+            *pe = *((pair*)q->next->entry);
             tmp = q->next->next;
             free(q->next);
             q->next = tmp;
@@ -362,15 +370,7 @@ void vector_free(vector *v)
         }
     }
 
-    // struct holds the process data
-    typedef struct processData
-    {
-        int id; // ID of the process
-        int arrivalTime;
-        int runTime;
-        int priority;
-        int size;
-    } Process;
+   
 
     struct my_msgbuff
     {
