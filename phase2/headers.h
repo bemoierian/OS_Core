@@ -29,16 +29,16 @@ typedef short bool;
 ///==============================
 // don't mess with this variable//
 int *shmaddr; //
-//===============================
- // struct holds the process data
-    typedef struct processData
-    {
-        int id; // ID of the process
-        int arrivalTime;
-        int runTime;
-        int priority;
-        int size;
-    } Process;
+              //===============================
+              // struct holds the process data
+typedef struct processData
+{
+    int id; // ID of the process
+    int arrivalTime;
+    int runTime;
+    int priority;
+    int size;
+} Process;
 int getClk()
 {
     return *shmaddr;
@@ -161,436 +161,497 @@ void vector_free(vector *v)
     free(v->items);
 }
 
-    // pair definition
-    typedef struct Pair
-    {
-        int startingAdd;
-        int size; // or process size
-    } pair;
-    // LINKED LIST IMPLEMENTATION
-    typedef struct listnode
-    {
-        void *entry;
-        struct listnode *next;
-    } Node;
-    typedef struct list
-    {
-        Node *head;
-        int size;
-    } List;
+// pair definition
+typedef struct Pair
+{
+    int startingAdd;
+    int size; // or process size
+} pair;
+// LINKED LIST IMPLEMENTATION
+typedef struct listnode
+{
+    void *entry;
+    struct listnode *next;
+} Node;
+typedef struct list
+{
+    Node *head;
+    int size;
+} List;
 
-    void CreateList(List *pl)
-    {
-        pl->head = NULL;
-        pl->size = 0;
-    }
+void CreateList(List *pl)
+{
+    pl->head = NULL;
+    pl->size = 0;
+}
 
-    int ListEmpty(List *pl)
-    {
-        return (pl->size == 0);
-        // or return !pl->head
-    }
+bool ListEmpty(List *pl)
+{
+    return (pl->size == 0);
+    // return (!pl->head);
+}
 
-    int ListSize(List *pl)
+int ListSize(List *pl)
+{
+    return pl->size;
+}
+void DestroyList(List *pl)
+{
+    Node *q;
+    while (pl->head)
     {
-        return pl->size;
+        q = pl->head->next;
+        free(pl->head);
+        pl->head = q;
     }
-    void DestroyList(List *pl)
+    pl->size = 0;
+}
+void TraverseList(List *pl, void (*Visit)(void *)) // frist param is list and second param is the funstion to raverse over the linked list
+{                                                  // data type of the func param
+    Node *p = pl->head;
+    while (p)
     {
-        Node *q;
-        while (pl->head)
-        {
-            q = pl->head->next;
-            free(pl->head);
-            pl->head = q;
+        (*Visit)(p->entry);
+        p = p->next;
+    }
+}
+bool InsertList(int pos, void *e, List *pl)
+{
+    Node *p, *q;
+    int i;
+    if (p = (Node *)malloc(sizeof(Node)))
+    {
+        p->entry = e;
+        p->next = NULL;
+
+        if (pos == 0)
+        { // works also for head = NULL
+            p->next = pl->head;
+            pl->head = p;
         }
-        pl->size = 0;
-    }
-    void TraverseList(List *pl, void (*Visit)(void *)) // frist param is list and second param is the funstion to raverse over the linked list
-    {                                               // data type of the func param
-        Node *p = pl->head;
-        while (p)
+        else
         {
-            (*Visit)(p->entry);
-            p = p->next;
+            for (q = pl->head, i = 0; i < pos - 1; i++)
+                q = q->next;
+            p->next = q->next;
+            q->next = p;
         }
+        pl->size++;
+        return true;
     }
-    bool InsertList(int pos, void * e, List *pl)
+    else
+        return false;
+}
+int InsertList_pair(pair *e, List *pl)
+{
+    Node *p, *q;
+    int i = 0;
+    if (p = (Node *)malloc(sizeof(Node)))
     {
-        Node *p, *q;
-        int i;
-        if (p = (Node *)malloc(sizeof(Node)))
-        {
-            p->entry = e;
-            p->next = NULL;
+        p->entry = e;
+        p->next = NULL;
 
-            if (pos == 0)
-            { // works also for head = NULL
+        if (pl->head == NULL)
+        { // works also for head = NULL
+            p->next = pl->head;
+            pl->head = p;
+        }
+        else
+        {
+            Node *prev = pl->head;
+            Node *curr = prev->next;
+            if (((pair *)prev->entry)->startingAdd > ((pair *)p->entry)->startingAdd) // to handle the head
+            {
                 p->next = pl->head;
                 pl->head = p;
             }
             else
             {
-                for (q = pl->head, i = 0; i < pos - 1; i++)
-                    q = q->next;
-                p->next = q->next;
-                q->next = p;
+                while (curr)
+                {
+                    if (((pair *)curr->entry)->startingAdd > ((pair *)p->entry)->startingAdd)
+                    {
+                        prev->next = p;
+                        p->next = curr;
+                        break;
+                    }
+                    i++;
+                    prev = curr;
+                    curr = curr->next;
+                }
+                if (!curr)
+                {
+                    prev->next = p; // na fel a5er
+                    p->next = NULL;
+                }
             }
-            pl->size++;
-            return true;
         }
-        else
-            return false;
+        pl->size++;
+        return i;
     }
-    void DeleteList_process(int pos, Process *pe, List *pl)
+    else
+        return -1;
+}
+void DeleteList_process(int pos, Process *pe, List *pl)
+{
+    int i;
+    Node *q, *tmp;
+
+    if (pos == 0)
     {
-        int i;
-        Node *q, *tmp;
-
-        if (pos == 0)
-        {
-            *pe = *((Process*)pl->head->entry);
-            tmp = pl->head->next;
-            free(pl->head);
-            pl->head = tmp;
-        } // it works also for one node
-        else
-        {
-            for (q = pl->head, i = 0; i < pos - 1; i++)
-                q = q->next;
-
-            *pe = *((Process*)q->next->entry);
-            tmp = q->next->next;
-            free(q->next);
-            q->next = tmp;
-        } // check for pos=size-1 (tmp will be NULL)
-        pl->size--;
-    } // O(n) but without shifting elements.
-
-    void DeleteList_pair(int pos, pair *pe, List *pl)
+        *pe = *((Process *)pl->head->entry);
+        tmp = pl->head->next;
+        free(pl->head);
+        pl->head = tmp;
+    } // it works also for one node
+    else
     {
-        int i;
-        Node *q, *tmp;
+        for (q = pl->head, i = 0; i < pos - 1; i++)
+            q = q->next;
 
-        if (pos == 0)
-        {
-            *pe = *((pair*)pl->head->entry);
-            tmp = pl->head->next;
-            free(pl->head);
-            pl->head = tmp;
-        } // it works also for one node
-        else
-        {
-            for (q = pl->head, i = 0; i < pos - 1; i++)
-                q = q->next;
+        *pe = *((Process *)q->next->entry);
+        tmp = q->next->next;
+        free(q->next);
+        q->next = tmp;
+    } // check for pos=size-1 (tmp will be NULL)
+    pl->size--;
+} // O(n) but without shifting elements.
 
-            *pe = *((pair*)q->next->entry);
-            tmp = q->next->next;
-            free(q->next);
-            q->next = tmp;
-        } // check for pos=size-1 (tmp will be NULL)
-        pl->size--;
-    } // O(n) but without shifting elements.
+void DeleteList_pair(int pos, pair *pe, List *pl)
+{
+    int i;
+    Node *q, *tmp;
 
-
-    // void RetrieveList(int pos, void *pe, List *pl)
-    // {
-    //     int i;
-    //     Node *q;
-    //     for (q = pl->head, i = 0; i < pos; i++)
-    //         q = q->next;
-    //     *pe = q->entry;
-    // }
-
-    void ReplaceList(int pos, void *e, List *pl)
+    if (pos == 0)
     {
-        int i;
-        Node *q;
+        *pe = *((pair *)pl->head->entry);
+        tmp = pl->head->next;
+        free(pl->head);
+        pl->head = tmp;
+    } // it works also for one node
+    else
+    {
+        for (q = pl->head, i = 0; i < pos - 1; i++)
+            q = q->next;
+
+        *pe = *((pair *)q->next->entry);
+        tmp = q->next->next;
+        free(q->next);
+        q->next = tmp;
+    } // check for pos=size-1 (tmp will be NULL)
+    pl->size--;
+} // O(n) but without shifting elements.
+
+void RetrieveList_Node(int pos, Node *pe, List *pl)
+{
+    int i;
+    Node *q = NULL;
+    if (pos < pl->size && pos > -1)
+    {
         for (q = pl->head, i = 0; i < pos; i++)
             q = q->next;
-        q->entry = e;
     }
-
-    //--------------SEMAPHORES---------------
-    union Semun
+    // *pe = *((pair *)q->entry);
+    pe = q;
+}
+void RetrieveList_process(int pos, Process *pe, List *pl)
+{
+    int i;
+    Node *q = NULL;
+    if (pos != pl->size || pos != -1)
     {
-        int val;               /* value for SETVAL */
-        struct semid_ds *buf;  /* buffer for IPC_STAT & IPC_SET */
-        ushort *array;         /* array for GETALL & SETALL */
-        struct seminfo *__buf; /* buffer for IPC_INFO */
-        void *__pad;
-    };
+        for (q = pl->head, i = 0; i < pos; i++)
+            q = q->next;
+    }
+    *pe = *((Process *)q->entry);
+}
+// void ReplaceList(int pos, void *e, List *pl)
+// {
+//     int i;
+//     Node *q;
+//     for (q = pl->head, i = 0; i < pos; i++)
+//         q = q->next;
+//     q->entry = e;
+// }
 
-    void down(int sem)
+//--------------SEMAPHORES---------------
+union Semun
+{
+    int val;               /* value for SETVAL */
+    struct semid_ds *buf;  /* buffer for IPC_STAT & IPC_SET */
+    ushort *array;         /* array for GETALL & SETALL */
+    struct seminfo *__buf; /* buffer for IPC_INFO */
+    void *__pad;
+};
+
+void down(int sem)
+{
+    struct sembuf p_op;
+    // index of the semaphore, here we have 1 semaphore, then index is 0
+    p_op.sem_num = 0;
+    //-ve means down operation, we want to obtain the resource
+    p_op.sem_op = -1;
+    p_op.sem_flg = !IPC_NOWAIT;
+    // param1: semaphore id
+    // param2: pointer to array of operations
+    // param3: number of operations inside array
+    int val;
+    while ((val = semop(sem, &p_op, 1)) == -1 && errno == EINTR)
     {
-        struct sembuf p_op;
-        // index of the semaphore, here we have 1 semaphore, then index is 0
-        p_op.sem_num = 0;
-        //-ve means down operation, we want to obtain the resource
-        p_op.sem_op = -1;
-        p_op.sem_flg = !IPC_NOWAIT;
-        // param1: semaphore id
-        // param2: pointer to array of operations
-        // param3: number of operations inside array
-        int val;
-        while ((val = semop(sem, &p_op, 1)) == -1 && errno == EINTR)
-        {
-            continue;
+        continue;
+    }
+    if (val == -1)
+    {
+        perror("Error in down()\n");
+        exit(-1);
+    }
+}
+
+void up(int sem)
+{
+    struct sembuf v_op;
+
+    v_op.sem_num = 0;
+    //+ve means up operation, we want to release the resource
+    v_op.sem_op = 1;
+    v_op.sem_flg = !IPC_NOWAIT;
+
+    // if (semop(sem, &v_op, 1) == -1)
+    // {
+    //     perror("Error in up()");
+    //     exit(-1);
+    // }
+    int val;
+    while ((val = semop(sem, &v_op, 1)) == -1 && errno == EINTR)
+    {
+        continue;
+    }
+    if (val == -1)
+    {
+        perror("Error in up()\n");
+        exit(-1);
+    }
+}
+
+struct my_msgbuff
+{
+    long mtype;
+    Process m_process;
+};
+
+// PRIORITY QUEUE
+typedef struct Pqueue
+{
+    int max;  // max size of the priority queue
+    int size; // current size
+    Process *pr;
+} PriorityQueue;
+
+// initialize the priority queue
+void createPriorityQ(PriorityQueue *q, int m)
+{
+    q->size = 0;
+    q->max = m;
+    q->pr = (Process *)malloc(sizeof(Process) * q->max);
+}
+// check if the Prio_Q is empty
+bool isPriorityQueueEmpty(PriorityQueue *q)
+{
+    return q->size == 0;
+}
+// check if the Prio_Q is full
+bool isPriorityQueueFull(PriorityQueue *q)
+{
+    return q->size == q->max;
+}
+// Function to insert a new element
+// into priority queue
+bool enqueue(PriorityQueue *q, Process newP)
+{
+    if (!isPriorityQueueFull(q))
+    {
+        // Insert the element
+        q->pr[q->size].id = newP.id;
+        q->pr[q->size].priority = newP.priority;
+        q->pr[q->size].arrivalTime = newP.arrivalTime;
+        q->pr[q->size].runTime = newP.runTime;
+        // Increase the size
+        q->size++;
+        return true;
+    }
+    return false;
+}
+
+// Function to check the top element
+int peek(PriorityQueue *q, Process *it)
+{
+    int highestPriority = INT_MAX;
+    int ind = -1;
+
+    // Check for the element with
+    // highest priority
+    for (int i = 0; i < q->size; i++)
+    {
+        // If priority is same choose
+        // the element with the
+        // highest value
+        if (highestPriority == q->pr[i].priority && ind > -1 && q->pr[ind].arrivalTime > q->pr[i].arrivalTime)
+        { // if 2 processes have the same priority take the first one came as the process with higher priority
+            highestPriority = q->pr[i].priority;
+            ind = i;
         }
-        if (val == -1)
+        else if (highestPriority > q->pr[i].priority) // for first time
         {
-            perror("Error in down()\n");
-            exit(-1);
+            highestPriority = q->pr[i].priority;
+            ind = i;
         }
     }
-
-    void up(int sem)
+    if (ind != -1)
     {
-        struct sembuf v_op;
+        it->priority = q->pr[ind].priority;
+        it->id = q->pr[ind].id;
+        it->arrivalTime = q->pr[ind].arrivalTime;
+        it->runTime = q->pr[ind].runTime;
+    }
+    // Return position of the element
+    return ind;
+}
 
-        v_op.sem_num = 0;
-        //+ve means up operation, we want to release the resource
-        v_op.sem_op = 1;
-        v_op.sem_flg = !IPC_NOWAIT;
+// Function to remove the element with
+// the highest priority
+bool dequeue(PriorityQueue *q, Process *it)
+{
+    if (!isPriorityQueueEmpty(q))
+    {
+        // Find the position of the element
+        // with highest priority
+        int ind = peek(q, it);
 
-        // if (semop(sem, &v_op, 1) == -1)
-        // {
-        //     perror("Error in up()");
-        //     exit(-1);
-        // }
-        int val;
-        while ((val = semop(sem, &v_op, 1)) == -1 && errno == EINTR)
+        // Shift the element one index before
+        // from the position of the element
+        // with highest priority is found
+        for (int i = ind; i < q->size; i++)
         {
-            continue;
+            q->pr[i] = q->pr[i + 1];
         }
-        if (val == -1)
-        {
-            perror("Error in up()\n");
-            exit(-1);
-        }
+
+        // Decrease the size of the
+        // priority queue by one
+        q->size--;
+        return true;
     }
+    return false;
+}
 
-   
+//  CIRCULAR QUEUE IMPLEMENTATION
+typedef struct circQueue
+{
+    Process *items;
+    int size;
+    int front;
+    int rear;
+    int maxSize;
+} CircularQueue;
 
-    struct my_msgbuff
-    {
-        long mtype;
-        Process m_process;
-    };
+void createCircularQueue(CircularQueue *q, int s)
+{
+    q->size = 0;
+    q->front = -1;
+    q->rear = -1;
+    q->maxSize = s; // max size in the circular queue
+    q->items = (Process *)malloc(q->maxSize * sizeof(Process));
+}
+// Check if the queue is full
+bool isCircularQueueFull(CircularQueue *q)
+{
+    if ((q->front == q->rear + 1) || (q->front == 0 && q->rear == q->maxSize - 1))
+        return true;
+    return false;
+}
 
-    // PRIORITY QUEUE
-    typedef struct Pqueue
-    {
-        int max;  // max size of the priority queue
-        int size; // current size
-        Process *pr;
-    } PriorityQueue;
+// // Check if the queue is empty
+bool isCircularQueueEmpty(CircularQueue *q)
+{
+    if (q->front == -1)
+        return true;
+    return false;
+}
 
-    // initialize the priority queue
-    void createPriorityQ(PriorityQueue * q, int m)
-    {
-        q->size = 0;
-        q->max = m;
-        q->pr = (Process *)malloc(sizeof(Process) * q->max);
-    }
-    // check if the Prio_Q is empty
-    bool isPriorityQueueEmpty(PriorityQueue * q)
-    {
-        return q->size == 0;
-    }
-    // check if the Prio_Q is full
-    bool isPriorityQueueFull(PriorityQueue * q)
-    {
-        return q->size == q->max;
-    }
-    // Function to insert a new element
-    // into priority queue
-    bool enqueue(PriorityQueue * q, Process newP)
-    {
-        if (!isPriorityQueueFull(q))
-        {
-            // Insert the element
-            q->pr[q->size].id = newP.id;
-            q->pr[q->size].priority = newP.priority;
-            q->pr[q->size].arrivalTime = newP.arrivalTime;
-            q->pr[q->size].runTime = newP.runTime;
-            // Increase the size
-            q->size++;
-            return true;
-        }
-        return false;
-    }
-
-    // Function to check the top element
-    int peek(PriorityQueue * q, Process * it)
-    {
-        int highestPriority = INT_MAX;
-        int ind = -1;
-
-        // Check for the element with
-        // highest priority
-        for (int i = 0; i < q->size; i++)
-        {
-            // If priority is same choose
-            // the element with the
-            // highest value
-            if (highestPriority == q->pr[i].priority && ind > -1 && q->pr[ind].arrivalTime > q->pr[i].arrivalTime)
-            {
-                highestPriority = q->pr[i].priority;
-                ind = i;
-            }
-            else if (highestPriority > q->pr[i].priority) // for first time
-            {
-                highestPriority = q->pr[i].priority;
-                ind = i;
-            }
-        }
-        if (ind != -1)
-        {
-            it->priority = q->pr[ind].priority;
-            it->id = q->pr[ind].id;
-            it->arrivalTime = q->pr[ind].arrivalTime;
-            it->runTime = q->pr[ind].runTime;
-        }
-        // Return position of the element
-        return ind;
-    }
-
-    // Function to remove the element with
-    // the highest priority
-    bool dequeue(PriorityQueue * q, Process * it)
-    {
-        if (!isPriorityQueueEmpty(q))
-        {
-            // Find the position of the element
-            // with highest priority
-            int ind = peek(q, it);
-
-            // Shift the element one index before
-            // from the position of the element
-            // with highest priority is found
-            for (int i = ind; i < q->size; i++)
-            {
-                q->pr[i] = q->pr[i + 1];
-            }
-
-            // Decrease the size of the
-            // priority queue by one
-            q->size--;
-            return true;
-        }
-        return false;
-    }
-
-    //  CIRCULAR QUEUE IMPLEMENTATION
-    typedef struct circQueue
-    {
-        Process *items;
-        int size;
-        int front;
-        int rear;
-        int maxSize;
-    } CircularQueue;
-
-    void createCircularQueue(CircularQueue * q, int s)
-    {
-        q->size = 0;
-        q->front = -1;
-        q->rear = -1;
-        q->maxSize = s; // max size in the circular queue
-        q->items = (Process *)malloc(q->maxSize * sizeof(Process));
-    }
-    // Check if the queue is full
-    bool isCircularQueueFull(CircularQueue * q)
-    {
-        if ((q->front == q->rear + 1) || (q->front == 0 && q->rear == q->maxSize - 1))
-            return true;
-        return false;
-    }
-
-    // // Check if the queue is empty
-    bool isCircularQueueEmpty(CircularQueue * q)
+// Adding an element
+bool enQueueCircularQueue(CircularQueue *q, Process element)
+{
+    printf("Enter Enqueue \n");
+    if (!isCircularQueueFull(q))
     {
         if (q->front == -1)
-            return true;
-        return false;
+            q->front = 0;
+        q->rear = (q->rear + 1) % q->maxSize;
+        q->items[q->rear].arrivalTime = element.arrivalTime;
+        q->items[q->rear].id = element.id;
+        q->items[q->rear].priority = element.priority;
+        q->items[q->rear].runTime = element.runTime;
+        q->size++;
+        return true;
     }
+    return false;
+}
 
-    // Adding an element
-    bool enQueueCircularQueue(CircularQueue * q, Process element)
+// Removing an element
+bool deQueueCircularQueue(CircularQueue *q, Process *element)
+{
+    // int element;
+    if (!isCircularQueueEmpty(q))
     {
-        printf("Enter Enqueue \n");
-        if (!isCircularQueueFull(q))
+        element->id = q->items[q->front].id;
+        element->priority = q->items[q->front].priority;
+        element->runTime = q->items[q->front].runTime;
+        element->arrivalTime = q->items[q->front].arrivalTime;
+        if (q->front == q->rear)
         {
-            if (q->front == -1)
-                q->front = 0;
-            q->rear = (q->rear + 1) % q->maxSize;
-            q->items[q->rear].arrivalTime = element.arrivalTime;
-            q->items[q->rear].id = element.id;
-            q->items[q->rear].priority = element.priority;
-            q->items[q->rear].runTime = element.runTime;
-            q->size++;
-            return true;
+            q->front = -1;
+            q->rear = -1;
         }
-        return false;
-    }
-
-    // Removing an element
-    bool deQueueCircularQueue(CircularQueue * q, Process * element)
-    {
-        // int element;
-        if (!isCircularQueueEmpty(q))
-        {
-            element->id = q->items[q->front].id;
-            element->priority = q->items[q->front].priority;
-            element->runTime = q->items[q->front].runTime;
-            element->arrivalTime = q->items[q->front].arrivalTime;
-            if (q->front == q->rear)
-            {
-                q->front = -1;
-                q->rear = -1;
-            }
-            // Q has only one element, so we reset the
-            // queue after dequeing it. ?
-            else
-            {
-                q->front = (q->front + 1) % q->maxSize;
-            }
-            // printf("\n Deleted element -> %d \n", element->id);
-            q->size--;
-            return true;
-        }
-        return false;
-    }
-    // peek
-    bool peekCircularQueue(CircularQueue * q, Process * element)
-    {
-        if (!isCircularQueueEmpty(q))
-        {
-            element->id = q->items[q->front].id;
-            element->priority = q->items[q->front].priority;
-            element->runTime = q->items[q->front].runTime;
-            // printf("\n Peek element -> %d \n", element->id);
-            return true;
-        }
-        return false;
-    }
-
-    // Display the queue
-    void displayCircularQueue(CircularQueue * q)
-    {
-        int i;
-        if (isCircularQueueEmpty(q))
-            printf(" \n Empty Queue\n");
+        // Q has only one element, so we reset the
+        // queue after dequeing it. ?
         else
         {
-            printf("\n Front -> %d ", q->front);
-            printf("\n Items -> ");
-            for (i = q->front; i != q->rear; i = (i + 1) % q->maxSize)
-            {
-                printf("%d ", q->items[i].id);
-            }
-            printf("%d ", q->items[i].id);
-            printf("\n Rear -> %d \n", q->rear);
+            q->front = (q->front + 1) % q->maxSize;
         }
+        // printf("\n Deleted element -> %d \n", element->id);
+        q->size--;
+        return true;
     }
+    return false;
+}
+// peek
+bool peekCircularQueue(CircularQueue *q, Process *element)
+{
+    if (!isCircularQueueEmpty(q))
+    {
+        element->id = q->items[q->front].id;
+        element->priority = q->items[q->front].priority;
+        element->runTime = q->items[q->front].runTime;
+        // printf("\n Peek element -> %d \n", element->id);
+        return true;
+    }
+    return false;
+}
+
+// Display the queue
+void displayCircularQueue(CircularQueue *q)
+{
+    int i;
+    if (isCircularQueueEmpty(q))
+        printf(" \n Empty Queue\n");
+    else
+    {
+        printf("\n Front -> %d ", q->front);
+        printf("\n Items -> ");
+        for (i = q->front; i != q->rear; i = (i + 1) % q->maxSize)
+        {
+            printf("%d ", q->items[i].id);
+        }
+        printf("%d ", q->items[i].id);
+        printf("\n Rear -> %d \n", q->rear);
+    }
+}

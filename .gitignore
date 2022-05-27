@@ -1,5 +1,5 @@
 *.out
 *.vs
-*.vscode
+.vscode
 *.log
 *.perf

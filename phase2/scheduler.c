@@ -41,12 +41,9 @@ const int totalMemo = 1024;
 // queue to store the process that has no place in memo ...we will use single queue as it's better for utilization
 List waitQ;
 // Functions Declarations
-void WritMemoryLine(FILE* ptr,int time, int size, int proc , int start_Add, int end_Add,char* state);
-bool allocate(int sz);
-
 void processTerminate(int sigID);
 void WriteOutputLine(FILE *ptr, int time, int process_id, char *state, int arr, int total, int reamain, int wait, int TA, float WTA);
-void WriteFinalOutput(float cpuUtil, float AvgWTA, float AvgWait, float StdWTA);
+void WriteFinalOutput(FILE *ptr, float cpuUtil, float AvgWTA, float AvgWait, float StdWTA);
 float StandardDeviation(float data[], int size);
 float AVG(float data[], int size);
 void TerminateCurrentProcess();
@@ -59,6 +56,9 @@ void initSemaphore(int *semID, int key);
 void setSemaphoreValue(int sem, int value);
 void receiveNewProcess();
 void destroyPCB(int numberOfProcesses);
+void WritMemoryLine(FILE *ptr, int time, int size, int proc, int start_Add, int end_Add, char *state);
+bool allocate(int sz);
+void deallocate();
 
 int main(int argc, char *argv[])
 {
@@ -73,26 +73,24 @@ int main(int argc, char *argv[])
     // 5 - > 2^9 512
     // 6 - > 2^10 1024
     for (size_t i = 0; i < 7; i++)
-    { // each list of a certain size has a max size it won't exceed
-        // free_list[i] = (pair *)malloc(sizeof(pair) * pow(2, 5 - i)); // free_list[0] is list of 32B and free_list[5] is 1024kB
-        // to know if this pair is empty or not
-        // free_list[i]->startingAdd = -1;
-        // free_list[i]->endAdd = -1;
-        List temp;
-        CreateList(&temp);
-        vector_add(&free_list, &temp);
+    {
+        List *temp = (List *)malloc(sizeof(List));
+        CreateList(temp);
+        vector_add(&free_list, temp);
     }
     // before allocating any process the starting address and ending address of the only of one block (0,1023)
     // free_list[5]->startingAdd = 0;
     // free_list[5]->endAdd = 1023;
-    pair *myPair = (pair *)malloc(sizeof(pair));
-    myPair->startingAdd = 0;
-    myPair->size = 1024;
-    InsertList(0,myPair,vector_get(&free_list, 6));
-    
+    pair myPair;
+    myPair.startingAdd = 0;
+    myPair.size = 1024;
+    InsertList_pair(&myPair, vector_get(&free_list, 6));
 
+    List *x = vector_get(&free_list, 6);
+    printf("size initail %d\n ", x->size);
     ptrM = fopen("memory.log", "w");
     ptr = fopen("scheduler.log", "w");
+    fprintf(ptr, "#At time x process y state arr w total z remain y wait k\n");
     fprintf(ptrM, "#At time x allocated y bytes for process z from i to j\n");
     initClk();
     printf("Entered schedular\n");
@@ -145,15 +143,15 @@ int main(int argc, char *argv[])
                 {
                     printf("New Process Recieved \n");
                     receiveNewProcess();
-                    //call allocate and check if allocated then enqueue
-                    if(allocate(message_recieved.m_process.size))
+                    // call allocate and check if allocated then enqueue
+                    if (allocate(message_recieved.m_process.size))
                     {
                         printf("IN ALOCATE!!!!!!!!!!!\n");
                         enqueue(&q1, message_recieved.m_process);
                         int strtAdd = processTable[message_recieved.m_process.id - 1]->startAddres;
                         int endAdd = processTable[message_recieved.m_process.id - 1]->endAddress;
                         int s = endAdd - strtAdd + 1;
-                        WritMemoryLine(ptrM,getClk(),s,message_recieved.m_process.id,strtAdd,endAdd,processTable[message_recieved.m_process.id - 1]->state);
+                        WritMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
                     }
                 }
             }
@@ -221,7 +219,16 @@ int main(int argc, char *argv[])
                     // allocate
                     receiveNewProcess();
                     message_recieved.m_process.priority = message_recieved.m_process.runTime;
-                    enqueue(&q1, message_recieved.m_process);
+                    // call allocate and check if allocated then enqueue
+                    if (allocate(message_recieved.m_process.size))
+                    {
+                        printf("IN ALOCATE!!!!!!!!!!!\n");
+                        enqueue(&q1, message_recieved.m_process);
+                        int strtAdd = processTable[message_recieved.m_process.id - 1]->startAddres;
+                        int endAdd = processTable[message_recieved.m_process.id - 1]->endAddress;
+                        int s = endAdd - strtAdd + 1;
+                        WritMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
+                    }
                 }
             }
             if (cpuFree)
@@ -291,8 +298,16 @@ int main(int argc, char *argv[])
                         {
                             receiveNewProcess();
                             message_recieved.m_process.priority = message_recieved.m_process.runTime;
-                            enqueue(&q1, message_recieved.m_process);
-                            printf("New Process Recieved %d \n", message_recieved.m_process.id);
+                            // call allocate and check if allocated then enqueue
+                            if (allocate(message_recieved.m_process.size))
+                            {
+                                printf("IN ALOCATE!!!!!!!!!!!\n");
+                                enqueue(&q1, message_recieved.m_process);
+                                int strtAdd = processTable[message_recieved.m_process.id - 1]->startAddres;
+                                int endAdd = processTable[message_recieved.m_process.id - 1]->endAddress;
+                                int s = endAdd - strtAdd + 1;
+                                WritMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
+                            }
                         }
                     }
                     Process *pTemp = (Process *)malloc(sizeof(Process));
@@ -366,8 +381,16 @@ int main(int argc, char *argv[])
                 {
                     printf("New Process Recieved \n");
                     receiveNewProcess(); // add the process to processTable
-                    enQueueCircularQueue(&q2, message_recieved.m_process);
-                    printf("new process enqueued \n");
+                                         // call allocate and check if allocated then enqueue
+                    if (allocate(message_recieved.m_process.size))
+                    {
+                        printf("IN ALOCATE!!!!!!!!!!!\n");
+                        enQueueCircularQueue(&q2, message_recieved.m_process);
+                        int strtAdd = processTable[message_recieved.m_process.id - 1]->startAddres;
+                        int endAdd = processTable[message_recieved.m_process.id - 1]->endAddress;
+                        int s = endAdd - strtAdd + 1;
+                        WritMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
+                    }
                 }
             }
             if (cpuFree)
@@ -443,8 +466,15 @@ int main(int argc, char *argv[])
                         {
                             // printf("New Process Recieved \n");
                             receiveNewProcess(); // add the process to processTable
-                            enQueueCircularQueue(&q2, message_recieved.m_process);
-                            printf("new process enqueued \n");
+                            if (allocate(message_recieved.m_process.size))
+                            {
+                                printf("IN ALOCATE!!!!!!!!!!!\n");
+                                enQueueCircularQueue(&q2, message_recieved.m_process);
+                                int strtAdd = processTable[message_recieved.m_process.id - 1]->startAddres;
+                                int endAdd = processTable[message_recieved.m_process.id - 1]->endAddress;
+                                int s = endAdd - strtAdd + 1;
+                                WritMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
+                            }
                         }
                     }
                     if (q2.size == 0)
@@ -476,7 +506,15 @@ int main(int argc, char *argv[])
                             {
                                 // printf("New Process Recieved \n");
                                 receiveNewProcess(); // add the process to processTable
-                                enQueueCircularQueue(&q2, message_recieved.m_process);
+                                if (allocate(message_recieved.m_process.size))
+                                {
+                                    printf("IN ALOCATE!!!!!!!!!!!\n");
+                                    enQueueCircularQueue(&q2, message_recieved.m_process);
+                                    int strtAdd = processTable[message_recieved.m_process.id - 1]->startAddres;
+                                    int endAdd = processTable[message_recieved.m_process.id - 1]->endAddress;
+                                    int s = endAdd - strtAdd + 1;
+                                    WritMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
+                                }
                                 printf("new process enqueued \n");
                             }
                         }
@@ -523,7 +561,7 @@ int main(int argc, char *argv[])
     float AvgWTA = AVG(WTA, numberOfProcesses);
     float AvgWait = AVG(Wait, numberOfProcesses);
     float StdWTA = StandardDeviation(WTA, numberOfProcesses);
-    WriteFinalOutput(CPUutilisation, AvgWTA, AvgWait, StdWTA);
+    WriteFinalOutput(ptr, CPUutilisation, AvgWTA, AvgWait, StdWTA);
     fclose(ptr); // close the file at the end
     // deattach shared memory
     shmdt(ps_shmaddr);
@@ -532,7 +570,7 @@ int main(int argc, char *argv[])
     free(Wait);
     // free vectors
     vector_free(&free_list);
-   // vector_free(&waitQ);
+    // vector_free(&waitQ);
     // free process table
     destroyPCB(numberOfProcesses);
     // upon termination release the clock resources.
@@ -553,6 +591,7 @@ void processTerminate(int sigID)
     // processTable[currrentProc.id - 1].totWaitTime = TA - processTable[currrentProc.id - 1].execTime;
     WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1]->state, currentProc->arrivalTime,
                     currentProc->runTime, processTable[currentProc->id - 1]->remainingTime, processTable[currentProc->id - 1]->totWaitTime, TA, WTA[currentProc->id - 1]);
+    deallocate(); // deallocate the currprocess from the memo
     TerminateCurrentProcess();
     signal(SIGUSR1, processTerminate); // attach the function to SIGUSR1
 }
@@ -578,15 +617,15 @@ void WriteOutputLine(FILE *ptr, int time, int process_id, char *state, int arr, 
         fprintf(ptr, "At time %d process %d %s arr %d total %d remain %d wait %d\n", time, process_id, state, arr, total, reamain, wait);
     fflush(ptr);
 }
-void WritMemoryLine(FILE*ptr,int time, int size, int proc , int start_Add, int end_Add,char* state)
+void WritMemoryLine(FILE *ptr, int time, int size, int proc, int start_Add, int end_Add, char *state)
 {
     if (!strcmp(state, "finished"))
-        fprintf(ptr, "At time %d allocated %d bytes for process %d from %d to %d \n", time, size, proc, start_Add, end_Add);
-    else
         fprintf(ptr, "At time %d freed %d bytes for process %d from %d to %d \n", time, size, proc, start_Add, end_Add);
+    else
+        fprintf(ptr, "At time %d allocated %d bytes for process %d from %d to %d \n", time, size, proc, start_Add, end_Add);
     fflush(ptr);
 }
-void WriteFinalOutput(float cpuUtil, float AvgWTA, float AvgWait, float StdWTA)
+void WriteFinalOutput(FILE *ptr, float cpuUtil, float AvgWTA, float AvgWait, float StdWTA)
 {
     fprintf(ptr, "CPU utilisation = %.2f %c\nAvg WTA = %.2f\nAvg Waiting = %.2f\nStd WTA = %.2f\n", cpuUtil, '%', AvgWTA, AvgWait, StdWTA);
     fflush(ptr);
@@ -677,7 +716,6 @@ void receiveNewProcess()
     processTable[message_recieved.m_process.id - 1]->priority = message_recieved.m_process.priority;
     processTable[message_recieved.m_process.id - 1]->execTime = message_recieved.m_process.runTime;
     processTable[message_recieved.m_process.id - 1]->ID = -1;
-    //processTable[message_recieved.m_process.id - 1]->size = message_recieved.m_process.size;
     // printf("Function receive \n");
     strcpy(processTable[message_recieved.m_process.id - 1]->state, "ready");
     processTable[message_recieved.m_process.id - 1]->remainingTime = message_recieved.m_process.runTime; // initail remaining Time
@@ -723,26 +761,24 @@ void destroyPCB(int numberOfProcesses)
 bool allocate(int sz)
 {
     bool isAllocated = false;
-    int n = ceil(log(sz) / log(2));                // nearest power of 2 to the passed size
-    n -= 4;            //                            // 34an azbt dal index bta3 al vector 3la al min ali na 7ato
+    int n = ceil(log(sz) / log(2)); // nearest power of 2 to the passed size
+    n -= 4;                         // 34an azbt dal index bta3 al vector 3la al min ali na 7ato
     int i = n;
-    while(i < 7 && ListEmpty(vector_get(&free_list, n)))       // there is no holes
+    while (i < 7 && ListEmpty(vector_get(&free_list, i))) // there is no holes
     {
         i++;
     }
-    printf("the I %d!!!!!!\n",i);
-    if(i >7) //insert in waitQ if there is no holes available
+    if (i > 7) // insert in waitQ if there is no holes available
     {
-        InsertList(waitQ.size,&message_recieved.m_process,&waitQ); //insert the process in the wait queue
+        InsertList(waitQ.size, &message_recieved.m_process, &waitQ); // insert the process in the wait queue
     }
-    
-    else //there is a hole available 
+    else // there is a hole available
     {
 
-        pair hole;
-        if(i == n)  // no dividing is needed
+        pair *hole = (pair *)malloc(sizeof(pair));
+        if (i == n) // no dividing is needed
         {
-            DeleteList_pair(0,&hole,vector_get(&free_list, i));
+            DeleteList_pair(0, hole, vector_get(&free_list, i));
         }
         else // need to divide
         {
@@ -750,29 +786,57 @@ bool allocate(int sz)
             for (j = i; j > n; j--)
             {
                 printf("bene2sem!!!!!!!!!!\n");
-                DeleteList_pair(0,&hole,vector_get(&free_list, j));
-                List* list = vector_get(&free_list, j-1);
+                DeleteList_pair(0, hole, vector_get(&free_list, j));
+                List *list = vector_get(&free_list, j - 1);
 
-                pair half_1;
-                half_1.startingAdd = hole.startingAdd;
-                half_1.size = hole.size/2;
-                InsertList(list->size, &half_1, list);
+                pair *h1 = (pair *)malloc(sizeof(pair));
+                h1->startingAdd = hole->startingAdd;
+                h1->size = hole->size / 2;
+                InsertList_pair(h1, list);
 
-                pair half_2;
-                half_2.startingAdd = hole.startingAdd + hole.size/2;
-                half_2.size = hole.size/2;
-                InsertList(list->size, &half_2, list);
-                
+                pair *h2 = (pair *)malloc(sizeof(pair));
+                h2->startingAdd = hole->startingAdd + hole->size / 2;
+                h2->size = hole->size / 2;
+                InsertList_pair(h2, list);
             }
-            DeleteList_pair(0,&hole,vector_get(&free_list, j+1));
+            DeleteList_pair(0, hole, vector_get(&free_list, j));
+            printf("add of hole = %d\n", hole->startingAdd);
         }
-        processTable[message_recieved.m_process.id - 1]->startAddres = hole.startingAdd;
-        processTable[message_recieved.m_process.id - 1]->endAddress = hole.startingAdd + hole.size - 1;
+        processTable[message_recieved.m_process.id - 1]->startAddres = hole->startingAdd;
+        processTable[message_recieved.m_process.id - 1]->endAddress = hole->startingAdd + hole->size - 1;
         isAllocated = true;
     }
     return isAllocated;
 }
 
-bool deallocate() // no param passed as we access the pcb using the id of currProcess
+void deallocate() // no param passed as we access the pcb using the id of currProcess
 {
+    int sz = processTable[currentProc->id - 1]->endAddress - processTable[currentProc->id - 1]->startAddres + 1;
+    int i = log2(sz);
+    i -= 4;
+    pair *newHole = (pair *)malloc(sizeof(pair));
+    newHole->startingAdd = processTable[currentProc->id - 1]->startAddres;
+    newHole->size = sz;
+    int j = InsertList_pair(newHole, vector_get(&free_list, i)); // add the hole to the list
+    Node *pre = NULL, *nxt = NULL;
+    int listSize = ListSize((List *)vector_get(&free_list, i));
+    RetrieveList_Node(j - 1, pre, vector_get(&free_list, i));
+    RetrieveList_Node(j + 1, nxt, vector_get(&free_list, i));
+
+    if (pre)
+    {
+        if ((((pair *)pre->entry)->startingAdd / listSize) % 2 == 0)
+        {
+            // merge
+            // DeleteList_pair();
+            for (size_t i = 0; i < count; i++)
+            {
+                /* code */
+            }
+        }
+    }
+    if (/* condition */)
+    {
+        /* code */
+    }
 }
