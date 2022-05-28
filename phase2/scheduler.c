@@ -22,6 +22,7 @@ Process *currentProc = NULL; // the currently running process
 PCB **processTable;          // the process table of the OS
 float *WTA;
 float *Wait;
+int sch_algo;
 //-----SHARED MEMORY AND SEMAPHORE VARIABLES----
 int sem1;
 int ps_shmid;
@@ -40,6 +41,9 @@ vector free_list; // we will use this vector as queue
 const int totalMemo = 1024;
 // queue to store the process that has no place in memo ...we will use single queue as it's better for utilization
 List *waitQ;
+// the queues used in scheduling depends on the type of the algorithm
+PriorityQueue q1;
+CircularQueue q2;
 // Functions Declarations
 void processTerminate(int sigID);
 void WriteOutputLine(FILE *ptr, int time, int process_id, char *state, int arr, int total, int reamain, int wait, int TA, float WTA);
@@ -59,7 +63,7 @@ void destroyPCB(int numberOfProcesses);
 void WritMemoryLine(FILE *ptr, int time, int size, int proc, int start_Add, int end_Add, char *state);
 bool allocate(Process);
 void deallocate();
-
+void AddToWaitQ(Process);
 int main(int argc, char *argv[])
 {
     // initialize the free_list of the memory
@@ -96,7 +100,7 @@ int main(int argc, char *argv[])
 
     signal(SIGUSR1, processTerminate); // attach the function to SIGUSR1
 
-    int sch_algo = atoi(argv[1]); // type of the algo
+    sch_algo = atoi(argv[1]); // type of the algo
     int q_size = 64;
     // int q_size = atoi(argv[2]);            // max no of processes
     int Quantum = atoi(argv[2]);           // Quantum for RR
@@ -105,15 +109,14 @@ int main(int argc, char *argv[])
     printf("runTime Time = %d \n", total_runtime);
 
     // initialize the waiting queue for the processes that have no room in the memory
+    waitQ = (List *)malloc(sizeof(List));
     CreateList(waitQ); // max number of processes regardless the sizes of the processes = numberOfProcesses - 1
 
+    printf("create the waiting Q\n");
     // the process table of the OS
     processTable = (PCB **)malloc(sizeof(PCB *) * numberOfProcesses);
     WTA = (float *)malloc(sizeof(float) * numberOfProcesses);
     Wait = (float *)malloc(sizeof(float) * numberOfProcesses);
-    // the queues used in scheduling depends on the type of the algorithm
-    PriorityQueue q1;
-    CircularQueue q2;
     //-----------SHARED MEMORY BETWEEN SCHEDULER AND RUNNING PROCESS-----------
     initSharedMemory(&ps_shmid, PS_SHM_KEY, &ps_shmaddr);
     //--------------------------------------------------------------------------
@@ -153,6 +156,10 @@ int main(int argc, char *argv[])
                         int s = endAdd - strtAdd + 1;
                         WritMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
                     }
+                    else
+                    {
+                        AddToWaitQ(message_recieved.m_process);
+                    }
                 }
             }
             currClk = getClk();
@@ -173,7 +180,7 @@ int main(int argc, char *argv[])
                 // printf("cpu free\n");
                 currentProc = (Process *)malloc(sizeof(Process));
                 bool flag = dequeue(&q1, currentProc);
-                printf("flag is %d ________________\n", flag);
+                // printf("flag is %d ________________\n", flag);
                 if (flag)
                 {
                     int pid = fork();
@@ -185,8 +192,8 @@ int main(int argc, char *argv[])
                     }
                     else
                     {
-                        printf("IN START ________________\n"); // parent
-                        cpuFree = false;                       // now the cpu is busy
+                        // printf("IN START ________________\n"); // parent
+                        cpuFree = false; // now the cpu is busy
                         StartCurrentProcess(pid);
                         printf("PS %d, remaining time %d\n\n", currentProc->id, processTable[currentProc->id - 1]->remainingTime);
                         *ps_shmaddr = processTable[currentProc->id - 1]->remainingTime;
@@ -229,6 +236,10 @@ int main(int argc, char *argv[])
                         int endAdd = processTable[message_recieved.m_process.id - 1]->endAddress;
                         int s = endAdd - strtAdd + 1;
                         WritMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
+                    }
+                    else
+                    {
+                        AddToWaitQ(message_recieved.m_process);
                     }
                 }
             }
@@ -308,6 +319,10 @@ int main(int argc, char *argv[])
                                 int endAdd = processTable[message_recieved.m_process.id - 1]->endAddress;
                                 int s = endAdd - strtAdd + 1;
                                 WritMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
+                            }
+                            else
+                            {
+                                AddToWaitQ(message_recieved.m_process);
                             }
                         }
                     }
@@ -391,6 +406,10 @@ int main(int argc, char *argv[])
                         int endAdd = processTable[message_recieved.m_process.id - 1]->endAddress;
                         int s = endAdd - strtAdd + 1;
                         WritMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
+                    }
+                    else
+                    {
+                        AddToWaitQ(message_recieved.m_process);
                     }
                 }
             }
@@ -476,6 +495,10 @@ int main(int argc, char *argv[])
                                 int s = endAdd - strtAdd + 1;
                                 WritMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
                             }
+                            else
+                            {
+                                AddToWaitQ(message_recieved.m_process);
+                            }
                         }
                     }
                     if (q2.size == 0)
@@ -516,7 +539,10 @@ int main(int argc, char *argv[])
                                     int s = endAdd - strtAdd + 1;
                                     WritMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
                                 }
-                                printf("new process enqueued \n");
+                                else
+                                {
+                                    AddToWaitQ(message_recieved.m_process);
+                                }
                             }
                         }
                         enQueueCircularQueue(&q2, *currentProc);   // enqueue the the stopped process to the ready queue
@@ -598,10 +624,8 @@ void processTerminate(int sigID)
     // processTable[currrentProc.id - 1].totWaitTime = TA - processTable[currrentProc.id - 1].execTime;
     WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1]->state, currentProc->arrivalTime,
                     currentProc->runTime, processTable[currentProc->id - 1]->remainingTime, processTable[currentProc->id - 1]->totWaitTime, TA, WTA[currentProc->id - 1]);
-    // deallocate(); // deallocate the currprocess from the memo
-    int s = processTable[currentProc->id - 1]->endAddress - processTable[currentProc->id - 1]->startAddres + 1;
-    WritMemoryLine(ptrM, getClk(), s, currentProc->id, processTable[currentProc->id - 1]->startAddres, processTable[currentProc->id - 1]->endAddress, processTable[currentProc->id - 1]->state);
 
+    deallocate(); // deallocate the currprocess from the memo
     TerminateCurrentProcess();
     signal(SIGUSR1, processTerminate); // attach the function to SIGUSR1
 }
@@ -665,7 +689,7 @@ void StartCurrentProcess(int pid)
     processTable[currentProc->id - 1]->responseTime = processTable[currentProc->id - 1]->startTime - currentProc->arrivalTime;
     processTable[currentProc->id - 1]->totWaitTime = processTable[currentProc->id - 1]->responseTime; // initialised here and will be increased later
     // setting the response and the waiting time with the same value as it's non-preemptive
-    printf("IN STARTCURRENT^^^^^^^^^^^^^^^^^^^^^\n");
+    // printf("IN STARTCURRENT^^^^^^^^^^^^^^^^^^^^^\n");
     WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1]->state, currentProc->arrivalTime,
                     currentProc->runTime, processTable[currentProc->id - 1]->remainingTime, processTable[currentProc->id - 1]->totWaitTime, 0, 0);
     printf("Start, id: %d\n", currentProc->id);
@@ -773,19 +797,25 @@ bool allocate(Process proces)
 {
     bool isAllocated = false;
     int n = ceil(log(proces.size) / log(2)); // nearest power of 2 to the passed size
-    n -= 4;                                  // 34an azbt dal index bta3 al vector 3la al min ali na 7ato
+    if (n <= 4)
+    {
+        n = 0; // first list
+    }
+    else
+    {
+        n -= 4; // 34an azbt dal index bta3 al vector 3la al min ali na 7ato
+    }
     int i = n;
     while (i < 7 && ListEmpty(vector_get(&free_list, i))) // there is no holes
     {
         i++;
     }
-    if (i > 7) // insert in waitQ if there is no holes available
+    if (i >= 7) // insert in waitQ if there is no holes available
     {
-        InsertList(waitQ.size, &proces, &waitQ); // insert the process in the wait queue
+        isAllocated = false; // you can't add
     }
     else // there is a hole available
     {
-
         pair *hole = (pair *)malloc(sizeof(pair));
         if (i == n) // no dividing is needed
         {
@@ -817,9 +847,20 @@ bool allocate(Process proces)
         processTable[proces.id - 1]->endAddress = hole->startingAdd + hole->size - 1;
         isAllocated = true;
     }
+    printf("isAllocated = %d\n", isAllocated);
     return isAllocated;
 }
-
+void AddToWaitQ(Process p)
+{
+    Process *newp = (Process *)malloc(sizeof(Process));
+    newp->id = p.id;
+    newp->arrivalTime = p.arrivalTime;
+    newp->priority = p.priority;
+    newp->runTime = p.runTime;
+    newp->size = p.size;
+    InsertList(waitQ->size, newp, waitQ); // insert the process in the wait queue
+    printf("waitQ->size = %d\n", waitQ->size);
+}
 void deallocate() // no param passed as we access the pcb using the id of currProcess
 {
     int sz = processTable[currentProc->id - 1]->endAddress - processTable[currentProc->id - 1]->startAddres + 1;
@@ -828,24 +869,24 @@ void deallocate() // no param passed as we access the pcb using the id of currPr
     pair *newHole = (pair *)malloc(sizeof(pair));
     newHole->startingAdd = processTable[currentProc->id - 1]->startAddres;
     newHole->size = sz;
-
     for (int m = i; m < 7; m++)
     {
         int j = InsertList_pair(newHole, vector_get(&free_list, m)); // add the hole to the list
+        Display(vector_get(&free_list, m));
         Node *pre = NULL, *curr = NULL, *nxt = NULL;
         RetrieveList_Node(j - 1, pre, vector_get(&free_list, m));
         RetrieveList_Node(j, curr, vector_get(&free_list, m));
         RetrieveList_Node(j + 1, nxt, vector_get(&free_list, m));
         if (pre) // if there is a prev node aslun check 3laha
         {
-            if ((((pair *)pre->entry)->startingAdd / sz) % 2 == 0)        // if even
-            {                                                             // 0 1 2 3
-                                                                          //  merge
-                DeleteList_pair(j - 1, NULL, vector_get(&free_list, m));  // remove pre
-                DeleteList_pair(j - 1, NULL, vector_get(&free_list, m));  // remove the new hole
-                newHole = (pair *)malloc(sizeof(pair));                   // don't free this pair
-                newHole->startingAdd = ((pair *)pre->entry)->startingAdd; // the start address is the one of the pre
-                sz *= 2;
+            if ((((pair *)pre->entry)->startingAdd / sz) % 2 == 0)                        // if even
+            {                                                                             // 0 1 2 3
+                                                                                          //  merge
+                DeleteList_pair(j - 1, ((pair *)pre->entry), vector_get(&free_list, m));  // remove pre
+                DeleteList_pair(j - 1, ((pair *)curr->entry), vector_get(&free_list, m)); // remove the curr
+                newHole = (pair *)malloc(sizeof(pair));                                   // don't free this pair
+                newHole->startingAdd = ((pair *)pre->entry)->startingAdd;                 // the start address is the one of the pre
+                sz *= 2;                                                                  // sum of 2 holes
                 newHole->size = sz;
 
                 continue; // lo 3mlt merge m3 ali abli m4 ha3ml m3 ali b3di
@@ -857,8 +898,8 @@ void deallocate() // no param passed as we access the pcb using the id of currPr
             { // 0 1 2 3
                 // 0  16  32 64
                 //  merge
-                DeleteList_pair(j, NULL, vector_get(&free_list, m));
-                DeleteList_pair(j, NULL, vector_get(&free_list, m));
+                DeleteList_pair(j, ((pair *)curr->entry), vector_get(&free_list, m)); // remove curr
+                DeleteList_pair(j, ((pair *)nxt->entry), vector_get(&free_list, m));  // remove nxt
                 newHole = (pair *)malloc(sizeof(pair));
                 newHole->startingAdd = ((pair *)curr->entry)->startingAdd; // the start address is the one of the curr now
                 sz *= 2;
@@ -869,13 +910,31 @@ void deallocate() // no param passed as we access the pcb using the id of currPr
         // lo m3rft4 a3ml merge m3 ai 7aga break
         break;
     }
-
-    Node *tempo = waitQ.head;
-    while (tempo)
+    int s = processTable[currentProc->id - 1]->endAddress - processTable[currentProc->id - 1]->startAddres + 1;
+    WritMemoryLine(ptrM, getClk(), s, currentProc->id, processTable[currentProc->id - 1]->startAddres, processTable[currentProc->id - 1]->endAddress, processTable[currentProc->id - 1]->state);
+    Node *tempo = waitQ->head;
+    int m = 0;
+    Process newProc;
+    while (m < waitQ->size)
     {
-        if (allocate(*((Process *)tempo->entry)))
-            break;
-
-        tempo = tempo->next;
+        RetrieveList_process(m, &newProc, waitQ);
+        if (allocate(newProc))
+        {
+            DeleteList_process(m, &newProc, waitQ);
+            m--;
+            if (sch_algo < 3)
+            {
+                enqueue(&q1, newProc);
+            }
+            else
+            {
+                enQueueCircularQueue(&q2, newProc);
+            }
+            int strtAdd = processTable[newProc.id - 1]->startAddres;
+            int endAdd = processTable[newProc.id - 1]->endAddress;
+            int s = endAdd - strtAdd + 1;
+            WritMemoryLine(ptrM, getClk(), s, newProc.id, strtAdd, endAdd, processTable[newProc.id - 1]->state);
+        }
+        m++;
     }
 }

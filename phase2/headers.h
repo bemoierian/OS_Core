@@ -215,6 +215,15 @@ void TraverseList(List *pl, void (*Visit)(void *)) // frist param is list and se
         p = p->next;
     }
 }
+void Display(List *pl)
+{ // data type of the func param
+    Node *p = pl->head;
+    while (p)
+    {
+        printf("p->startingAdd: %d p->size: %d \n", ((pair *)p->entry)->startingAdd, ((pair *)p->entry)->size);
+        p = p->next;
+    }
+}
 bool InsertList(int pos, void *e, List *pl)
 {
     Node *p, *q;

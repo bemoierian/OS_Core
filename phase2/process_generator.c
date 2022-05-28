@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
         // sprintf(sendedSize, "%d", q_size);
         sprintf(Q, "%d", Quantum);
         sprintf(PsNumebr, "%d", processes_number);
-        // sprintf(RUN, "%d", total_runtime);
+        sprintf(RUN, "%d", total_runtime);
         sprintf(algo, "%d", sch_algo); // converts the int to string to sended in the arguments of the process
         // execl("scheduler.out", "scheduler", algo, sendedSize, Q, PsNumebr, RUN, NULL);
         execl("scheduler.out", "scheduler", algo, Q, PsNumebr, RUN, NULL);
