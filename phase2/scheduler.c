@@ -39,7 +39,7 @@ vector free_list; // we will use this vector as queue
 // total memeory
 const int totalMemo = 1024;
 // queue to store the process that has no place in memo ...we will use single queue as it's better for utilization
-List waitQ;
+List *waitQ;
 // Functions Declarations
 void processTerminate(int sigID);
 void WriteOutputLine(FILE *ptr, int time, int process_id, char *state, int arr, int total, int reamain, int wait, int TA, float WTA);
@@ -57,7 +57,7 @@ void setSemaphoreValue(int sem, int value);
 void receiveNewProcess();
 void destroyPCB(int numberOfProcesses);
 void WritMemoryLine(FILE *ptr, int time, int size, int proc, int start_Add, int end_Add, char *state);
-bool allocate(Process );
+bool allocate(Process);
 void deallocate();
 
 int main(int argc, char *argv[])
@@ -79,33 +79,33 @@ int main(int argc, char *argv[])
         vector_add(&free_list, temp);
     }
     // before allocating any process the starting address and ending address of the only of one block (0,1023)
-    // free_list[5]->startingAdd = 0;
-    // free_list[5]->endAdd = 1023;
-    pair myPair;
-    myPair.startingAdd = 0;
-    myPair.size = 1024;
-    InsertList_pair(&myPair, vector_get(&free_list, 6));
+    pair *myPair = (pair *)malloc(sizeof(pair));
+    myPair->startingAdd = 0;
+    myPair->size = 1024;
+    InsertList_pair(myPair, vector_get(&free_list, 6));
 
     List *x = vector_get(&free_list, 6);
     printf("size initail %d\n ", x->size);
+
     ptrM = fopen("memory.log", "w");
     ptr = fopen("scheduler.log", "w");
     fprintf(ptr, "#At time x process y state arr w total z remain y wait k\n");
     fprintf(ptrM, "#At time x allocated y bytes for process z from i to j\n");
+
     initClk();
-    printf("Entered schedular\n");
+
     signal(SIGUSR1, processTerminate); // attach the function to SIGUSR1
 
-    int sch_algo = atoi(argv[1]);          // type of the algo
-    int q_size = atoi(argv[2]);            // max no of processes
-    int Quantum = atoi(argv[3]);           // Quantum for RR
-    int numberOfProcesses = atoi(argv[4]); // max no of processes
-    int total_runtime = atoi(argv[5]);     // total runtime of processes
+    int sch_algo = atoi(argv[1]); // type of the algo
+    int q_size = 64;
+    // int q_size = atoi(argv[2]);            // max no of processes
+    int Quantum = atoi(argv[2]);           // Quantum for RR
+    int numberOfProcesses = atoi(argv[3]); // max no of processes
+    int total_runtime = atoi(argv[4]);     // total runtime of processes
     printf("runTime Time = %d \n", total_runtime);
 
     // initialize the waiting queue for the processes that have no room in the memory
-
-    CreateList(&waitQ); // max number of processes regardless the sizes of the processes = numberOfProcesses - 1
+    CreateList(waitQ); // max number of processes regardless the sizes of the processes = numberOfProcesses - 1
 
     // the process table of the OS
     processTable = (PCB **)malloc(sizeof(PCB *) * numberOfProcesses);
@@ -184,9 +184,9 @@ int main(int argc, char *argv[])
                         execl("process.out", "process", processRunTime, NULL);
                     }
                     else
-                    {       
-                         printf("IN START ________________\n");             // parent
-                        cpuFree = false; // now the cpu is busy
+                    {
+                        printf("IN START ________________\n"); // parent
+                        cpuFree = false;                       // now the cpu is busy
                         StartCurrentProcess(pid);
                         printf("PS %d, remaining time %d\n\n", currentProc->id, processTable[currentProc->id - 1]->remainingTime);
                         *ps_shmaddr = processTable[currentProc->id - 1]->remainingTime;
@@ -569,9 +569,15 @@ int main(int argc, char *argv[])
     // free wta
     free(WTA);
     free(Wait);
-    // free vectors
+    // free the waiting Q
+    DestroyList(waitQ);
+    // free each list in the buddy algo
+    for (size_t i = 0; i < 7; i++)
+    {
+        DestroyList(vector_get(&free_list, i));
+    }
+    // free the vector holdig the list
     vector_free(&free_list);
-    // vector_free(&waitQ);
     // free process table
     destroyPCB(numberOfProcesses);
     // upon termination release the clock resources.
@@ -592,10 +598,10 @@ void processTerminate(int sigID)
     // processTable[currrentProc.id - 1].totWaitTime = TA - processTable[currrentProc.id - 1].execTime;
     WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1]->state, currentProc->arrivalTime,
                     currentProc->runTime, processTable[currentProc->id - 1]->remainingTime, processTable[currentProc->id - 1]->totWaitTime, TA, WTA[currentProc->id - 1]);
-    //deallocate(); // deallocate the currprocess from the memo
-    int s= processTable[currentProc->id - 1]->endAddress-processTable[currentProc->id - 1]->startAddres+1;
-    // WritMemoryLine(ptrM, getClk(), s, currentProc->id, processTable[currentProc->id - 1]->startAddres, processTable[currentProc->id - 1]->endAddress, processTable[currentProc->id - 1]->state);
-                              
+    // deallocate(); // deallocate the currprocess from the memo
+    int s = processTable[currentProc->id - 1]->endAddress - processTable[currentProc->id - 1]->startAddres + 1;
+    WritMemoryLine(ptrM, getClk(), s, currentProc->id, processTable[currentProc->id - 1]->startAddres, processTable[currentProc->id - 1]->endAddress, processTable[currentProc->id - 1]->state);
+
     TerminateCurrentProcess();
     signal(SIGUSR1, processTerminate); // attach the function to SIGUSR1
 }
@@ -767,7 +773,7 @@ bool allocate(Process proces)
 {
     bool isAllocated = false;
     int n = ceil(log(proces.size) / log(2)); // nearest power of 2 to the passed size
-    n -= 4;                         // 34an azbt dal index bta3 al vector 3la al min ali na 7ato
+    n -= 4;                                  // 34an azbt dal index bta3 al vector 3la al min ali na 7ato
     int i = n;
     while (i < 7 && ListEmpty(vector_get(&free_list, i))) // there is no holes
     {
@@ -817,68 +823,59 @@ bool allocate(Process proces)
 void deallocate() // no param passed as we access the pcb using the id of currProcess
 {
     int sz = processTable[currentProc->id - 1]->endAddress - processTable[currentProc->id - 1]->startAddres + 1;
-    int i = log2(sz);
-    i -= 4;
+    int i = log2(sz); // this size reserved in os 2^n
+    i -= 4;           // to map to our threshold which 16 kB
     pair *newHole = (pair *)malloc(sizeof(pair));
     newHole->startingAdd = processTable[currentProc->id - 1]->startAddres;
     newHole->size = sz;
-   
 
-for(int m=i;m<7;m++)
-{
- int j = InsertList_pair(newHole, vector_get(&free_list, i)); // add the hole to the list
-    Node *pre = NULL, *nxt = NULL;
-    int listSize = ListSize((List *)vector_get(&free_list, i));
-    RetrieveList_Node(j - 1, pre, vector_get(&free_list, i));
-    RetrieveList_Node(j + 1, nxt, vector_get(&free_list, i));
-    if (pre)
+    for (int m = i; m < 7; m++)
     {
-        if ((((pair *)pre->entry)->startingAdd / listSize) % 2 == 0)
-        {//0 1 2 3
-            // merge
-             DeleteList_pair(j-1,NULL,vector_get(&free_list, i));
-             DeleteList_pair(j-1,NULL,vector_get(&free_list, i));
-              pair *newHole2 = (pair *)malloc(sizeof(pair));
-              newHole2->startingAdd = ((pair *)pre->entry)->startingAdd;
-                newHole2->size = (newHole->size)*2;
-               
-                newHole=newHole2;
-              
-            continue;
+        int j = InsertList_pair(newHole, vector_get(&free_list, m)); // add the hole to the list
+        Node *pre = NULL, *curr = NULL, *nxt = NULL;
+        RetrieveList_Node(j - 1, pre, vector_get(&free_list, m));
+        RetrieveList_Node(j, curr, vector_get(&free_list, m));
+        RetrieveList_Node(j + 1, nxt, vector_get(&free_list, m));
+        if (pre) // if there is a prev node aslun check 3laha
+        {
+            if ((((pair *)pre->entry)->startingAdd / sz) % 2 == 0)        // if even
+            {                                                             // 0 1 2 3
+                                                                          //  merge
+                DeleteList_pair(j - 1, NULL, vector_get(&free_list, m));  // remove pre
+                DeleteList_pair(j - 1, NULL, vector_get(&free_list, m));  // remove the new hole
+                newHole = (pair *)malloc(sizeof(pair));                   // don't free this pair
+                newHole->startingAdd = ((pair *)pre->entry)->startingAdd; // the start address is the one of the pre
+                sz *= 2;
+                newHole->size = sz;
+
+                continue; // lo 3mlt merge m3 ali abli m4 ha3ml m3 ali b3di
+            }
         }
-       
-    }
-    if (nxt)
-    {
-        if ((((pair *)nxt->entry)->startingAdd / listSize) % 2 != 0)
-        {//0 1 2 3
-        //0  16  32 64
-            // merge
-             DeleteList_pair(j,NULL,vector_get(&free_list, i));
-             DeleteList_pair(j,NULL,vector_get(&free_list, i));
-              pair *newHole2 = (pair *)malloc(sizeof(pair));
-            //   newHole2->startingAdd = ((pair *)nxt->entry)->startingAdd-sz;
-              newHole2->startingAdd = newHole->startingAdd;
-                 newHole2->size = (newHole->size)*2;
-                newHole=newHole2;
-               
-            continue;
+        if (nxt) // lo fe nxt node check 3laha
+        {
+            if ((((pair *)curr->entry)->startingAdd / sz) % 2 == 0)
+            { // 0 1 2 3
+                // 0  16  32 64
+                //  merge
+                DeleteList_pair(j, NULL, vector_get(&free_list, m));
+                DeleteList_pair(j, NULL, vector_get(&free_list, m));
+                newHole = (pair *)malloc(sizeof(pair));
+                newHole->startingAdd = ((pair *)curr->entry)->startingAdd; // the start address is the one of the curr now
+                sz *= 2;
+                newHole->size = sz;
+                continue;
+            }
         }
-       
+        // lo m3rft4 a3ml merge m3 ai 7aga break
+        break;
     }
 
-    
-    break;
-    
-}
-
-Node *tempo = waitQ.head;
+    Node *tempo = waitQ.head;
     while (tempo)
     {
-        if(allocate(*((Process*)tempo->entry)))
-        break;
+        if (allocate(*((Process *)tempo->entry)))
+            break;
 
-        tempo =tempo->next;
+        tempo = tempo->next;
     }
-
 }
