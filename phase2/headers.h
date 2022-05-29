@@ -23,7 +23,6 @@ typedef short bool;
 #define MSGKEY 301
 #define PS_SHM_KEY 402
 #define SEM1_KEY 450
-#define SEM2_KEY 600
 // min memory allocated for a process
 #define MIN_PROCESS 32 // 2^5
 #define MAX_PROCESS 256

@@ -24,7 +24,7 @@ float *WTA;
 float *Wait;
 int sch_algo;
 //-----SHARED MEMORY AND SEMAPHORE VARIABLES----
-int sem1, sem2;
+int sem1;
 int ps_shmid;
 int *ps_shmaddr;
 // ---To recieve the processes using msg Q----
@@ -60,7 +60,7 @@ void initSemaphore(int *semID, int key);
 // void setSemaphoreValue(int sem, int value);
 void receiveNewProcess();
 void destroyPCB(int numberOfProcesses);
-void WritMemoryLine(FILE *ptr, int time, int size, int proc, int start_Add, int end_Add, char *state);
+void WriteMemoryLine(FILE *ptr, int time, int size, int proc, int start_Add, int end_Add, char *state);
 bool allocate(Process);
 void deallocate();
 void AddToWaitQ(Process);
@@ -120,7 +120,6 @@ int main(int argc, char *argv[])
     //--------------------------------------------------------------------------
     //----------------SEMPAHORES------------------
     initSemaphore(&sem1, SEM1_KEY);
-    //initSemaphore(&sem2, SEM2_KEY);
     //--------------------------------------------------------------------------
     // create message queue and return id
     msgq_id = msgget(MSGKEY, 0666 | IPC_CREAT);
@@ -153,7 +152,7 @@ int main(int argc, char *argv[])
                         int strtAdd = processTable[message_recieved.m_process.id - 1]->startAddres;
                         int endAdd = processTable[message_recieved.m_process.id - 1]->endAddress;
                         int s = endAdd - strtAdd + 1;
-                        WritMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
+                        WriteMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
                     }
                     else
                     {
@@ -171,15 +170,12 @@ int main(int argc, char *argv[])
                 {
                     printf("PS %d, remaining time %d\n", currentProc->id, processTable[currentProc->id - 1]->remainingTime);
                     decRemainingTimeOfCurrPs();
-                    // processTable[currentProc->id - 1]->remaingTime--;
                 }
             }
             if (cpuFree)
             {
-                // printf("cpu free\n");
                 currentProc = (Process *)malloc(sizeof(Process));
                 bool flag = dequeue(&q1, currentProc);
-                // printf("flag is %d ________________\n", flag);
                 if (flag)
                 {
                     int pid = fork();
@@ -191,7 +187,6 @@ int main(int argc, char *argv[])
                     }
                     else
                     {
-                        // printf("IN START ________________\n"); // parent
                         cpuFree = false; // now the cpu is busy
                         StartCurrentProcess(pid);
                         printf("PS %d, remaining time %d\n\n", currentProc->id, processTable[currentProc->id - 1]->remainingTime);
@@ -218,9 +213,6 @@ int main(int argc, char *argv[])
         {
             for (size_t i = 0; i < numberOfProcesses; i++) // to recieve all process sent at this time
             {
-                //printf("------before up-----\n");
-                // up(sem2);
-                //down sem3
                 rc = msgctl(msgq_id, IPC_STAT, &buf); // check if there is a comming process
                 num_messages = buf.msg_qnum;
                 if (num_messages > 0)
@@ -237,19 +229,13 @@ int main(int argc, char *argv[])
                         int strtAdd = processTable[message_recieved.m_process.id - 1]->startAddres;
                         int endAdd = processTable[message_recieved.m_process.id - 1]->endAddress;
                         int s = endAdd - strtAdd + 1;
-                        WritMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
+                        WriteMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
                     }
                     else
                     {
                         AddToWaitQ(message_recieved.m_process);
                     }
                 }
-                //else
-                //{
-                    // printf("------EL ERROR BYE7SAL HENA-----\n");
-                    // down(sem2);
-                    // printf("------After down-----\n");
-                //}
             }
             if (cpuFree)
             {
@@ -311,9 +297,6 @@ int main(int argc, char *argv[])
                     // receive any comming process if any to be checked on it
                     for (size_t i = 0; i < numberOfProcesses; i++) // to recieve all process sent at this time
                     {
-                        // up
-                        //printf("------Before up 2-----\n");
-                        //up(sem2);
                         rc = msgctl(msgq_id, IPC_STAT, &buf); // check if there is a comming process
                         printf("waiting for a process \n");
                         num_messages = buf.msg_qnum;
@@ -329,18 +312,13 @@ int main(int argc, char *argv[])
                                 int strtAdd = processTable[message_recieved.m_process.id - 1]->startAddres;
                                 int endAdd = processTable[message_recieved.m_process.id - 1]->endAddress;
                                 int s = endAdd - strtAdd + 1;
-                                WritMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
+                                WriteMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
                             }
                             else
                             {
                                 AddToWaitQ(message_recieved.m_process);
                             }
                         }
-                        //else
-                        // {
-                        //     down(sem2); // down if you didn't receive anything
-                        //     printf("------After down 2-----\n");
-                        // }
                     }
                     Process *pTemp = (Process *)malloc(sizeof(Process));
                     int ind = peek(&q1, pTemp);
@@ -356,34 +334,6 @@ int main(int argc, char *argv[])
                             enqueue(&q1, *currentProc);
 
                             free(currentProc); // free currentProcess after enqueuing it
-
-                            // if (cpuFree)
-                            // if there is no currently a running process
-                            // currentProc = (Process *)malloc(sizeof(Process));
-                            // int flag = peek(&q1, currentProc);
-                            // if (flag >= 0) // if there is a process in the Q
-                            // {
-                            // printf("before resume\n");
-                            // if (processTable[pTemp->id - 1]->ID != -1) // if this process forked before
-                            // {
-                            //     currentProc = (Process *)malloc(sizeof(Process));
-                            //     dequeue(&q1, currentProc);
-                            //     printf("after resume\n");
-                            //     //  Set remaining time in shared memory
-                            //     *ps_shmaddr = processTable[currentProc->id - 1]->remainingTime;
-                            //     // Set remaining time in semaphore
-                            //     setSemaphoreValue(sem1, processTable[currentProc->id - 1]->remainingTime - 1);
-                            //     printf("Resume, id: %d\n", currentProc->id);
-                            //     ResumeCurrentProcess();
-                            //     cpuFree = false; // now we are running a process started or resumed
-                            //     printf(" now we are running a process resumed \n");
-                            // }
-                            // }
-                            // else
-                            // {
-                            //     free(currentProc);
-                            //     currentProc = NULL;
-                            // }
                         }
                     }
                     free(pTemp); // free the pTemp anyway
@@ -421,7 +371,7 @@ int main(int argc, char *argv[])
                         int strtAdd = processTable[message_recieved.m_process.id - 1]->startAddres;
                         int endAdd = processTable[message_recieved.m_process.id - 1]->endAddress;
                         int s = endAdd - strtAdd + 1;
-                        WritMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
+                        WriteMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
                     }
                     else
                     {
@@ -488,7 +438,6 @@ int main(int argc, char *argv[])
                 {
                     decRemainingTimeOfCurrPs(); // dec the remaining time in process Table
                     down(sem1);                 // down the sem
-                    // printf("Dec remaining time %d \n", currentProc->id);
                 }
                 if (!cpuFree && q2.size == 0 && (getClk() == Quantum + quantumStartTime))
                 {
@@ -500,7 +449,6 @@ int main(int argc, char *argv[])
                         printf("number of received msgs = %ld \n", buf.msg_qnum);
                         if (num_messages > 0)
                         {
-                            // printf("New Process Recieved \n");
                             receiveNewProcess(); // add the process to processTable
                             if (allocate(message_recieved.m_process))
                             {
@@ -509,7 +457,7 @@ int main(int argc, char *argv[])
                                 int strtAdd = processTable[message_recieved.m_process.id - 1]->startAddres;
                                 int endAdd = processTable[message_recieved.m_process.id - 1]->endAddress;
                                 int s = endAdd - strtAdd + 1;
-                                WritMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
+                                WriteMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
                             }
                             else
                             {
@@ -522,7 +470,6 @@ int main(int argc, char *argv[])
                         // so we need to set its start time to take the quantum
                         quantumStartTime = getClk();
                     }
-                    // printf("cpu is not free and the size = 0 that means there is only one running process\n");
                 }
                 // this must be if condition not else if because after receiving the msgs in the previous if we shoulf check if we received more msgs
                 if (!cpuFree && (getClk() == Quantum + quantumStartTime) && q2.size != 0)
@@ -544,7 +491,6 @@ int main(int argc, char *argv[])
                             printf("number of received msgs = %ld \n", buf.msg_qnum);
                             if (num_messages > 0)
                             {
-                                // printf("New Process Recieved \n");
                                 receiveNewProcess(); // add the process to processTable
                                 if (allocate(message_recieved.m_process))
                                 {
@@ -553,7 +499,7 @@ int main(int argc, char *argv[])
                                     int strtAdd = processTable[message_recieved.m_process.id - 1]->startAddres;
                                     int endAdd = processTable[message_recieved.m_process.id - 1]->endAddress;
                                     int s = endAdd - strtAdd + 1;
-                                    WritMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
+                                    WriteMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
                                 }
                                 else
                                 {
@@ -637,7 +583,6 @@ void processTerminate(int sigID)
     int TA = getClk() - currentProc->arrivalTime;
     WTA[currentProc->id - 1] = (float)TA / processTable[currentProc->id - 1]->execTime; // Array of WTA of each process
     Wait[currentProc->id - 1] = processTable[currentProc->id - 1]->totWaitTime;         // Array of WTA of each process
-    // processTable[currrentProc.id - 1].totWaitTime = TA - processTable[currrentProc.id - 1].execTime;
     WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1]->state, currentProc->arrivalTime,
                     currentProc->runTime, processTable[currentProc->id - 1]->remainingTime, processTable[currentProc->id - 1]->totWaitTime, TA, WTA[currentProc->id - 1]);
 
@@ -667,12 +612,12 @@ void WriteOutputLine(FILE *ptr, int time, int process_id, char *state, int arr, 
         fprintf(ptr, "At time %d process %d %s arr %d total %d remain %d wait %d\n", time, process_id, state, arr, total, reamain, wait);
     fflush(ptr);
 }
-void WritMemoryLine(FILE *ptr, int time, int size, int proc, int start_Add, int end_Add, char *state)
+void WriteMemoryLine(FILE *ptr, int time, int size, int proc, int start_Add, int end_Add, char *state)
 {
     if (!strcmp(state, "finished"))
-        fprintf(ptr, "At time %d freed %d bytes for process %d from %d to %d \n", time, size, proc, start_Add, end_Add);
+        fprintf(ptr, "At time %d freed %d bytes for process %d from %d to %d\n", time, size, proc, start_Add, end_Add);
     else
-        fprintf(ptr, "At time %d allocated %d bytes for process %d from %d to %d \n", time, size, proc, start_Add, end_Add);
+        fprintf(ptr, "At time %d allocated %d bytes for process %d from %d to %d\n", time, size, proc, start_Add, end_Add);
     fflush(ptr);
 }
 void WriteFinalOutput(FILE *ptr, float cpuUtil, float AvgWTA, float AvgWait, float StdWTA)
@@ -705,7 +650,6 @@ void StartCurrentProcess(int pid)
     processTable[currentProc->id - 1]->responseTime = processTable[currentProc->id - 1]->startTime - currentProc->arrivalTime;
     processTable[currentProc->id - 1]->totWaitTime = processTable[currentProc->id - 1]->responseTime; // initialised here and will be increased later
     // setting the response and the waiting time with the same value as it's non-preemptive
-    // printf("IN STARTCURRENT^^^^^^^^^^^^^^^^^^^^^\n");
     WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1]->state, currentProc->arrivalTime,
                     currentProc->runTime, processTable[currentProc->id - 1]->remainingTime, processTable[currentProc->id - 1]->totWaitTime, 0, 0);
     printf("Start, id: %d\n", currentProc->id);
@@ -746,14 +690,10 @@ void receiveNewProcess()
     int recv_Val = msgrcv(msgq_id, &message_recieved, sizeof(message_recieved.m_process), 7, IPC_NOWAIT);
     if (recv_Val == -1)
         perror("Error: Scheduler failed to receive  \n");
-    // processTable[message_recieved.m_process.id - 1] = (PCB *)malloc(sizeof(Process));
-    // printf("Proccess Scheduled Id : %d at Time : %d\n", message_recieved.m_process.id, message_recieved.m_process.arrivalTime);
-    //  Process newProc = message_recieved.m_process;
     processTable[message_recieved.m_process.id - 1] = (PCB *)malloc(sizeof(PCB));
     processTable[message_recieved.m_process.id - 1]->priority = message_recieved.m_process.priority;
     processTable[message_recieved.m_process.id - 1]->execTime = message_recieved.m_process.runTime;
     processTable[message_recieved.m_process.id - 1]->ID = -1;
-    // printf("Function receive \n");
     strcpy(processTable[message_recieved.m_process.id - 1]->state, "ready");
     processTable[message_recieved.m_process.id - 1]->remainingTime = message_recieved.m_process.runTime; // initail remaining Time
 }
@@ -921,7 +861,7 @@ void deallocate() // no param passed as we access the pcb using the id of currPr
         break;
     }
     int s = processTable[currentProc->id - 1]->endAddress - processTable[currentProc->id - 1]->startAddres + 1;
-    WritMemoryLine(ptrM, getClk(), s, currentProc->id, processTable[currentProc->id - 1]->startAddres, processTable[currentProc->id - 1]->endAddress, processTable[currentProc->id - 1]->state);
+    WriteMemoryLine(ptrM, getClk(), s, currentProc->id, processTable[currentProc->id - 1]->startAddres, processTable[currentProc->id - 1]->endAddress, processTable[currentProc->id - 1]->state);
     Node *tempo = waitQ->head;
     int m = 0;
     Process newProc;
@@ -943,7 +883,7 @@ void deallocate() // no param passed as we access the pcb using the id of currPr
             int strtAdd = processTable[newProc.id - 1]->startAddres;
             int endAdd = processTable[newProc.id - 1]->endAddress;
             int s = endAdd - strtAdd + 1;
-            WritMemoryLine(ptrM, getClk(), s, newProc.id, strtAdd, endAdd, processTable[newProc.id - 1]->state);
+            WriteMemoryLine(ptrM, getClk(), s, newProc.id, strtAdd, endAdd, processTable[newProc.id - 1]->state);
         }
         m++;
     }
