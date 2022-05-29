@@ -425,6 +425,7 @@ void down(int sem)
     {
         continue;
     }
+    //printf("------INSIDE DOWN-----\n");
     if (val == -1)
     {
         perror("Error in down()\n");

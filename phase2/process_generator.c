@@ -90,14 +90,14 @@ int main(int argc, char *argv[])
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
     // sem2
-    sem2 = semget(SEM2_KEY, 1, 0666 | IPC_CREAT);
-    if (sem2 == -1)
-    {
-        perror("Error in create sem");
-        exit(-1);
-    }
+    // sem2 = semget(SEM2_KEY, 1, 0666 | IPC_CREAT);
+    // if (sem2 == -1)
+    // {
+    //     perror("Error in create sem");
+    //     exit(-1);
+    // }
     // To get time use this
-    setSemaphoreValue(sem2, 0);
+    //setSemaphoreValue(sem2, processes[0].arrivalTime);
     int curr_time;
     printf("current time is %d\n", curr_time);
     printf("total runtime is %d\n", total_runtime);
@@ -114,13 +114,14 @@ int main(int argc, char *argv[])
         // 6. Send the information to the scheduler at the appropriate time.
         if (curr_time == processes[i].arrivalTime)
         {
+            //down(sem2);
             // send to scheduler
             // down
-            down(sem2);
-            // printf("sem2 down\n;");
+            // printf("sem2 down\n");
             message_send.m_process = processes[i];
             message_send.mtype = 7;
             send_val = msgsnd(msgq_id, &message_send, sizeof(message_send.m_process), !IPC_NOWAIT);
+            //up sem3
             if (send_val == -1)
                 perror("Error: process_generator failed to send the input message \n");
             processes[i].arrivalTime = -1;
@@ -171,7 +172,7 @@ void clearResources(int signum)
     shmctl(ps_shmid, IPC_RMID, (struct shmid_ds *)0);
     // destory semaphore
     semctl(sem1, 0, IPC_RMID, (union Semun)0);
-    semctl(sem2, 0, IPC_RMID, (union Semun)0);
+    //semctl(sem2, 0, IPC_RMID, (union Semun)0);
     // Clear clock resources
     printf("process generator destroying clock\n");
     destroyClk(true); // if your press ctrl+c you have to kill other processes so we need to call destroy clk

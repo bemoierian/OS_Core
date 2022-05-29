@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
     //--------------------------------------------------------------------------
     //----------------SEMPAHORES------------------
     initSemaphore(&sem1, SEM1_KEY);
-    initSemaphore(&sem2, SEM2_KEY);
+    //initSemaphore(&sem2, SEM2_KEY);
     //--------------------------------------------------------------------------
     // create message queue and return id
     msgq_id = msgget(MSGKEY, 0666 | IPC_CREAT);
@@ -218,7 +218,9 @@ int main(int argc, char *argv[])
         {
             for (size_t i = 0; i < numberOfProcesses; i++) // to recieve all process sent at this time
             {
-                up(sem2);
+                //printf("------before up-----\n");
+                // up(sem2);
+                //down sem3
                 rc = msgctl(msgq_id, IPC_STAT, &buf); // check if there is a comming process
                 num_messages = buf.msg_qnum;
                 if (num_messages > 0)
@@ -242,10 +244,12 @@ int main(int argc, char *argv[])
                         AddToWaitQ(message_recieved.m_process);
                     }
                 }
-                else
-                {
-                    down(sem2);
-                }
+                //else
+                //{
+                    // printf("------EL ERROR BYE7SAL HENA-----\n");
+                    // down(sem2);
+                    // printf("------After down-----\n");
+                //}
             }
             if (cpuFree)
             {
@@ -308,7 +312,8 @@ int main(int argc, char *argv[])
                     for (size_t i = 0; i < numberOfProcesses; i++) // to recieve all process sent at this time
                     {
                         // up
-                        up(sem2);
+                        //printf("------Before up 2-----\n");
+                        //up(sem2);
                         rc = msgctl(msgq_id, IPC_STAT, &buf); // check if there is a comming process
                         printf("waiting for a process \n");
                         num_messages = buf.msg_qnum;
@@ -331,10 +336,11 @@ int main(int argc, char *argv[])
                                 AddToWaitQ(message_recieved.m_process);
                             }
                         }
-                        else
-                        {
-                            down(sem2); // down if you didn't receive anything
-                        }
+                        //else
+                        // {
+                        //     down(sem2); // down if you didn't receive anything
+                        //     printf("------After down 2-----\n");
+                        // }
                     }
                     Process *pTemp = (Process *)malloc(sizeof(Process));
                     int ind = peek(&q1, pTemp);
