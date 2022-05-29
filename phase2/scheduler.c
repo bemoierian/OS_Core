@@ -24,7 +24,7 @@ float *WTA;
 float *Wait;
 int sch_algo;
 //-----SHARED MEMORY AND SEMAPHORE VARIABLES----
-int sem1;
+int sem1, sem2;
 int ps_shmid;
 int *ps_shmaddr;
 // ---To recieve the processes using msg Q----
@@ -57,7 +57,7 @@ void StartCurrentProcess();
 void decRemainingTimeOfCurrPs();
 void initSharedMemory(int *shmID, int key, int **shmAdrr);
 void initSemaphore(int *semID, int key);
-void setSemaphoreValue(int sem, int value);
+// void setSemaphoreValue(int sem, int value);
 void receiveNewProcess();
 void destroyPCB(int numberOfProcesses);
 void WritMemoryLine(FILE *ptr, int time, int size, int proc, int start_Add, int end_Add, char *state);
@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
     pair *myPair = (pair *)malloc(sizeof(pair));
     myPair->startingAdd = 0;
     myPair->size = 1024;
-    InsertList_pair(myPair, NULL, vector_get(&free_list, 6));
+    InsertList_pair(myPair, vector_get(&free_list, 6));
 
     List *x = vector_get(&free_list, 6);
     printf("size initail %d\n ", x->size);
@@ -100,9 +100,7 @@ int main(int argc, char *argv[])
 
     signal(SIGUSR1, processTerminate); // attach the function to SIGUSR1
 
-    sch_algo = atoi(argv[1]); // type of the algo
-    int q_size = 64;
-    // int q_size = atoi(argv[2]);            // max no of processes
+    sch_algo = atoi(argv[1]);              // type of the algo
     int Quantum = atoi(argv[2]);           // Quantum for RR
     int numberOfProcesses = atoi(argv[3]); // max no of processes
     int total_runtime = atoi(argv[4]);     // total runtime of processes
@@ -122,6 +120,7 @@ int main(int argc, char *argv[])
     //--------------------------------------------------------------------------
     //----------------SEMPAHORES------------------
     initSemaphore(&sem1, SEM1_KEY);
+    initSemaphore(&sem2, SEM2_KEY);
     //--------------------------------------------------------------------------
     // create message queue and return id
     msgq_id = msgget(MSGKEY, 0666 | IPC_CREAT);
@@ -135,8 +134,8 @@ int main(int argc, char *argv[])
     {
     case 1:; // HPF
         printf("Entered case 1\n");
-        createPriorityQ(&q1, q_size); // create the priority Q
-        while (1)                     // this replaces the while(1) by mark to make the scheduler terminate upon finishing all processes to continue after the while loop and terminate itself (process generator does not treminate schedular)
+        createPriorityQ(&q1, numberOfProcesses); // create the priority Q
+        while (1)                                // this replaces the while(1) by mark to make the scheduler terminate upon finishing all processes to continue after the while loop and terminate itself (process generator does not treminate schedular)
         {
             for (int i = 0; i < numberOfProcesses; i++) // to recieve all process sent at this time
             {
@@ -214,11 +213,12 @@ int main(int argc, char *argv[])
         break;
 
     case 2:; // SRTN
-        createPriorityQ(&q1, q_size);
+        createPriorityQ(&q1, numberOfProcesses);
         while (1)
         {
             for (size_t i = 0; i < numberOfProcesses; i++) // to recieve all process sent at this time
             {
+                up(sem2);
                 rc = msgctl(msgq_id, IPC_STAT, &buf); // check if there is a comming process
                 num_messages = buf.msg_qnum;
                 if (num_messages > 0)
@@ -241,6 +241,10 @@ int main(int argc, char *argv[])
                     {
                         AddToWaitQ(message_recieved.m_process);
                     }
+                }
+                else
+                {
+                    down(sem2);
                 }
             }
             if (cpuFree)
@@ -303,6 +307,8 @@ int main(int argc, char *argv[])
                     // receive any comming process if any to be checked on it
                     for (size_t i = 0; i < numberOfProcesses; i++) // to recieve all process sent at this time
                     {
+                        // up
+                        up(sem2);
                         rc = msgctl(msgq_id, IPC_STAT, &buf); // check if there is a comming process
                         printf("waiting for a process \n");
                         num_messages = buf.msg_qnum;
@@ -324,6 +330,10 @@ int main(int argc, char *argv[])
                             {
                                 AddToWaitQ(message_recieved.m_process);
                             }
+                        }
+                        else
+                        {
+                            down(sem2); // down if you didn't receive anything
                         }
                     }
                     Process *pTemp = (Process *)malloc(sizeof(Process));
@@ -385,7 +395,7 @@ int main(int argc, char *argv[])
 
     case 3:; // RR
         printf("Q = %d\n", Quantum);
-        createCircularQueue(&q2, q_size);
+        createCircularQueue(&q2, numberOfProcesses);
         int quantumStartTime;
         while (1)
         {
@@ -724,21 +734,7 @@ void initSemaphore(int *semID, int key)
         exit(-1);
     }
 }
-void setSemaphoreValue(int sem, int value)
-{
-    union Semun semun;
-    semun.val = value;
-    int val;
-    while (val = semctl(sem, 0, SETVAL, semun) == -1 && errno == EINTR)
-    {
-        continue;
-    }
-    if (val == -1)
-    {
-        perror("Scheduler: Error in semctl");
-        exit(-1);
-    }
-}
+
 void receiveNewProcess()
 {
     int recv_Val = msgrcv(msgq_id, &message_recieved, sizeof(message_recieved.m_process), 7, IPC_NOWAIT);
@@ -833,12 +829,12 @@ bool allocate(Process proces)
                 pair *h1 = (pair *)malloc(sizeof(pair));
                 h1->startingAdd = hole->startingAdd;
                 h1->size = hole->size / 2;
-                InsertList_pair(h1, NULL, list);
+                InsertList_pair(h1, list);
 
                 pair *h2 = (pair *)malloc(sizeof(pair));
                 h2->startingAdd = hole->startingAdd + hole->size / 2;
                 h2->size = hole->size / 2;
-                InsertList_pair(h2, NULL, list);
+                InsertList_pair(h2, list);
             }
             DeleteList_pair(0, hole, vector_get(&free_list, j));
             printf("add of hole = %d\n", hole->startingAdd);
@@ -869,15 +865,15 @@ void deallocate() // no param passed as we access the pcb using the id of currPr
     pair *newHole = (pair *)malloc(sizeof(pair));
     newHole->startingAdd = processTable[currentProc->id - 1]->startAddres;
     newHole->size = sz;
+    pair tempPre, tempCurr;
     for (int m = i; m < 7; m++)
     {
         Node *pre = NULL, *curr = NULL, *nxt = NULL;
-        int j = InsertList_pair(newHole, curr, vector_get(&free_list, m)); // add the hole to the list
+        int j = InsertList_pair(newHole, vector_get(&free_list, m)); // add the hole to the list
         printf("the inserted hole in list %d at index %d and the size of the list now is %d\n", m, j, ListSize(vector_get(&free_list, m)));
         Display(vector_get(&free_list, m));
-        RetrieveList_Node(j - 1, pre, vector_get(&free_list, m));
-        // RetrieveList_Node(j, curr, vector_get(&free_list, m));
-        // RetrieveList_Node(j + 1, nxt, vector_get(&free_list, m));
+        RetrieveList_Node(j - 1, &pre, vector_get(&free_list, m));
+        RetrieveList_Node(j, &curr, vector_get(&free_list, m));
         if (curr)
             nxt = curr->next;
         else
@@ -885,14 +881,15 @@ void deallocate() // no param passed as we access the pcb using the id of currPr
         if (pre) // if there is a prev node aslun check 3laha
         {
             printf("pre isn't null\n");
-            if ((((pair *)pre->entry)->startingAdd / sz) % 2 == 0)        // if even
-            {                                                             // 0 1 2 3
-                                                                          //  merge
-                DeleteList_pair(j - 1, NULL, vector_get(&free_list, m));  // remove pre
-                DeleteList_pair(j - 1, NULL, vector_get(&free_list, m));  // remove the curr
-                newHole = (pair *)malloc(sizeof(pair));                   // don't free this pair
-                newHole->startingAdd = ((pair *)pre->entry)->startingAdd; // the start address is the one of the pre
-                sz *= 2;                                                  // sum of 2 holes
+            if ((((pair *)pre->entry)->startingAdd / sz) % 2 == 0) // if even
+            {                                                      // 0 1 2 3
+                //  merge
+                DeleteList_pair(j - 1, &tempPre, vector_get(&free_list, m)); // remove pre
+                DeleteList_pair(j - 1, NULL, vector_get(&free_list, m));     // remove the curr
+
+                newHole = (pair *)malloc(sizeof(pair));     // don't free this pair
+                newHole->startingAdd = tempPre.startingAdd; // the start address is the one of the pre
+                sz *= 2;                                    // sum of 2 holes
                 newHole->size = sz;
 
                 continue; // lo 3mlt merge m3 ali abli m4 ha3ml m3 ali b3di
@@ -902,13 +899,12 @@ void deallocate() // no param passed as we access the pcb using the id of currPr
         {
             printf("nxt isn't null\n");
             if ((((pair *)curr->entry)->startingAdd / sz) % 2 == 0)
-            { // 0 1 2 3
-                // 0  16  32 64
-                //  merge
-                DeleteList_pair(j, NULL, vector_get(&free_list, m)); // remove curr
-                DeleteList_pair(j, NULL, vector_get(&free_list, m)); // remove nxt
+            {
+                DeleteList_pair(j, &tempCurr, vector_get(&free_list, m)); // remove curr
+                DeleteList_pair(j, NULL, vector_get(&free_list, m));      // remove nxt
+
                 newHole = (pair *)malloc(sizeof(pair));
-                newHole->startingAdd = ((pair *)curr->entry)->startingAdd; // the start address is the one of the curr now
+                newHole->startingAdd = tempCurr.startingAdd; // the start address is the one of the curr now
                 sz *= 2;
                 newHole->size = sz;
                 continue;

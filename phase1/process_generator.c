@@ -77,10 +77,10 @@ int main(int argc, char *argv[])
         printf("Please enter the quatum of RR\n");
         scanf("%d", &Quantum);
     }
-    printf("Choose the size of the queue\n");
-    int q_size;
-    scanf("%d", &q_size);
-    printf("\n");
+    // printf("Choose the size of the queue\n");
+    // int q_size;
+    // scanf("%d", &q_size);
+    // printf("\n");
     // 3. Initiate and create the scheduler and clock processes.
     pid1 = fork(); // fork for the clk
     if (pid1 == 0)
@@ -92,15 +92,16 @@ int main(int argc, char *argv[])
     {
         char algo[2];
         char Q[4];
-        char sendedSize[4]; // send the max of process
+        // char sendedSize[4]; // send the max of process
         char PsNumebr[4];
         char RUN[4];
-        sprintf(sendedSize, "%d", q_size);
+        // sprintf(sendedSize, "%d", q_size);
         sprintf(Q, "%d", Quantum);
         sprintf(PsNumebr, "%d", processes_number);
         sprintf(RUN, "%d", total_runtime);
         sprintf(algo, "%d", sch_algo); // converts the int to string to sended in the arguments of the process
-        execl("scheduler.out", "scheduler", algo, sendedSize, Q, PsNumebr, RUN, NULL);
+        // execl("scheduler.out", "scheduler", algo, sendedSize, Q, PsNumebr, RUN, NULL);
+        execl("scheduler.out", "scheduler", algo, Q, PsNumebr, RUN, NULL);
     }
     // 4. Use this function after creating the clock process to initialize clock
     initClk();

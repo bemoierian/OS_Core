@@ -23,6 +23,7 @@ typedef short bool;
 #define MSGKEY 301
 #define PS_SHM_KEY 402
 #define SEM1_KEY 450
+#define SEM2_KEY 600
 // min memory allocated for a process
 #define MIN_PROCESS 32 // 2^5
 #define MAX_PROCESS 256
@@ -251,10 +252,9 @@ bool InsertList(int pos, void *e, List *pl)
     else
         return false;
 }
-int InsertList_pair(pair *e, Node *curr, List *pl)
+int InsertList_pair(pair *e, List *pl)
 {
     Node *p;
-    curr = NULL;
     int i = 0;
     if (p = (Node *)malloc(sizeof(Node)))
     {
@@ -297,7 +297,6 @@ int InsertList_pair(pair *e, Node *curr, List *pl)
             }
         }
         pl->size++;
-        curr = p;
         return i;
     }
     else
@@ -332,10 +331,11 @@ void DeleteList_pair(int pos, pair *pe, List *pl)
 {
     int i;
     Node *q, *tmp;
-
     if (pos == 0)
     {
-        *pe = *((pair *)pl->head->entry);
+        if (pe)
+            *pe = *((pair *)pl->head->entry);
+        printf("in delete \n");
         tmp = pl->head->next;
         free(pl->head);
         pl->head = tmp;
@@ -344,8 +344,8 @@ void DeleteList_pair(int pos, pair *pe, List *pl)
     {
         for (q = pl->head, i = 0; i < pos - 1; i++)
             q = q->next;
-
-        *pe = *((pair *)q->next->entry);
+        if (pe)
+            *pe = *((pair *)q->next->entry);
         tmp = q->next->next;
         free(q->next);
         q->next = tmp;
@@ -353,7 +353,7 @@ void DeleteList_pair(int pos, pair *pe, List *pl)
     pl->size--;
 } // O(n) but without shifting elements.
 
-void RetrieveList_Node(int pos, Node *pe, List *pl)
+void RetrieveList_Node(int pos, Node **pe, List *pl)
 {
     int i;
     Node *q = NULL;
@@ -363,7 +363,7 @@ void RetrieveList_Node(int pos, Node *pe, List *pl)
             q = q->next;
     }
     // *pe = *((pair *)q->entry);
-    pe = q;
+    *pe = q;
 }
 void RetrieveList_process(int pos, Process *pe, List *pl)
 {
@@ -394,7 +394,21 @@ union Semun
     struct seminfo *__buf; /* buffer for IPC_INFO */
     void *__pad;
 };
-
+void setSemaphoreValue(int sem, int value)
+{
+    union Semun semun;
+    semun.val = value;
+    int val;
+    while (val = semctl(sem, 0, SETVAL, semun) == -1 && errno == EINTR)
+    {
+        continue;
+    }
+    if (val == -1)
+    {
+        perror("Scheduler: Error in semctl");
+        exit(-1);
+    }
+}
 void down(int sem)
 {
     struct sembuf p_op;

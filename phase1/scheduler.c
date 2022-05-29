@@ -59,10 +59,9 @@ int main(int argc, char *argv[])
     signal(SIGUSR1, processTerminate); // attach the function to SIGUSR1
 
     int sch_algo = atoi(argv[1]);          // type of the algo
-    int q_size = atoi(argv[2]);            // max no of processes
-    int Quantum = atoi(argv[3]);           // Quantum for RR
-    int numberOfProcesses = atoi(argv[4]); // max no of processes
-    int total_runtime = atoi(argv[5]);     // total runtime of processes
+    int Quantum = atoi(argv[2]);           // Quantum for RR
+    int numberOfProcesses = atoi(argv[3]); // max no of processes
+    int total_runtime = atoi(argv[4]);     // total runtime of processes
     printf("runTime Time = %d \n", total_runtime);
 
     // the process table of the OS
@@ -91,8 +90,8 @@ int main(int argc, char *argv[])
     {
     case 1:; // HPF
         printf("Entered case 1\n");
-        createPriorityQ(&q1, q_size); // create the priority Q
-        while (1)                     // this replaces the while(1) by mark to make the scheduler terminate upon finishing all processes to continue after the while loop and terminate itself (process generator does not treminate schedular)
+        createPriorityQ(&q1, numberOfProcesses); // create the priority Q
+        while (1)                                // this replaces the while(1) by mark to make the scheduler terminate upon finishing all processes to continue after the while loop and terminate itself (process generator does not treminate schedular)
         {
             for (int i = 0; i < numberOfProcesses; i++) // to recieve all process sent at this time
             {
@@ -156,7 +155,7 @@ int main(int argc, char *argv[])
         break;
 
     case 2:; // SRTN
-        createPriorityQ(&q1, q_size);
+        createPriorityQ(&q1, numberOfProcesses);
         while (1)
         {
             for (size_t i = 0; i < numberOfProcesses; i++) // to recieve all process sent at this time
@@ -301,7 +300,7 @@ int main(int argc, char *argv[])
 
     case 3:; // RR
         printf("Q = %d\n", Quantum);
-        createCircularQueue(&q2, q_size);
+        createCircularQueue(&q2, numberOfProcesses);
         int quantumStartTime;
         while (1)
         {

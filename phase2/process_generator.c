@@ -2,7 +2,7 @@
 
 void clearResources(int);
 
-int msgq_id, sem1, ps_shmid;
+int msgq_id, sem1, sem2, ps_shmid;
 int *ps_shmaddr;
 Process *processes;
 int pid1, pid2;
@@ -67,10 +67,6 @@ int main(int argc, char *argv[])
         printf("Please enter the quatum of RR\n");
         scanf("%d", &Quantum);
     }
-    // printf("Choose the size of the queue\n");
-    // int q_size;
-    // scanf("%d", &q_size);
-    // printf("\n");
     // 3. Initiate and create the scheduler and clock processes.
     pid1 = fork(); // fork for the clk
     if (pid1 == 0)
@@ -82,7 +78,6 @@ int main(int argc, char *argv[])
     {
         char algo[2];
         char Q[4];
-        // char sendedSize[4]; // send the max of process
         char PsNumebr[4];
         char RUN[4];
         // sprintf(sendedSize, "%d", q_size);
@@ -90,13 +85,19 @@ int main(int argc, char *argv[])
         sprintf(PsNumebr, "%d", processes_number);
         sprintf(RUN, "%d", total_runtime);
         sprintf(algo, "%d", sch_algo); // converts the int to string to sended in the arguments of the process
-        // execl("scheduler.out", "scheduler", algo, sendedSize, Q, PsNumebr, RUN, NULL);
         execl("scheduler.out", "scheduler", algo, Q, PsNumebr, RUN, NULL);
     }
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
-
+    // sem2
+    sem2 = semget(SEM2_KEY, 1, 0666 | IPC_CREAT);
+    if (sem2 == -1)
+    {
+        perror("Error in create sem");
+        exit(-1);
+    }
     // To get time use this
+    setSemaphoreValue(sem2, 0);
     int curr_time;
     printf("current time is %d\n", curr_time);
     printf("total runtime is %d\n", total_runtime);
@@ -114,6 +115,9 @@ int main(int argc, char *argv[])
         if (curr_time == processes[i].arrivalTime)
         {
             // send to scheduler
+            // down
+            down(sem2);
+            // printf("sem2 down\n;");
             message_send.m_process = processes[i];
             message_send.mtype = 7;
             send_val = msgsnd(msgq_id, &message_send, sizeof(message_send.m_process), !IPC_NOWAIT);
@@ -159,7 +163,6 @@ int main(int argc, char *argv[])
 
 void clearResources(int signum)
 {
-
     // TODO Clears all resources in case of interruption
     msgctl(msgq_id, IPC_RMID, (struct msqid_ds *)0);
     // deattach shared memory
@@ -168,6 +171,7 @@ void clearResources(int signum)
     shmctl(ps_shmid, IPC_RMID, (struct shmid_ds *)0);
     // destory semaphore
     semctl(sem1, 0, IPC_RMID, (union Semun)0);
+    semctl(sem2, 0, IPC_RMID, (union Semun)0);
     // Clear clock resources
     printf("process generator destroying clock\n");
     destroyClk(true); // if your press ctrl+c you have to kill other processes so we need to call destroy clk
