@@ -544,10 +544,18 @@ int main(int argc, char *argv[])
     ptr = fopen("scheduler.perf", "w");
     printf("finish Time = %d \n", finishTime);
     printf("runTime Time = %d \n", total_runtime);
-    float CPUutilisation = ((float)total_runtime / finishTime) * 100;
-    float AvgWTA = AVG(WTA, numberOfProcesses);
-    float AvgWait = AVG(Wait, numberOfProcesses);
-    float StdWTA = StandardDeviation(WTA, numberOfProcesses);
+    float CPUutilisation, AvgWTA, AvgWait, StdWTA;
+    if (finishTime != 0 && numberOfProcesses != 0)
+    {
+        CPUutilisation = ((float)total_runtime / finishTime) * 100;
+        AvgWTA = AVG(WTA, numberOfProcesses);
+        AvgWait = AVG(Wait, numberOfProcesses);
+        StdWTA = StandardDeviation(WTA, numberOfProcesses);
+    }
+    else
+    {
+        CPUutilisation = AvgWTA = AvgWait = StdWTA = 0;
+    }
     WriteFinalOutput(ptr, CPUutilisation, AvgWTA, AvgWait, StdWTA); // scheduler.pref
     fclose(ptr);                                                    // close the file at the end
     // deattach shared memory
