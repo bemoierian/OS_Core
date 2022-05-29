@@ -251,9 +251,10 @@ bool InsertList(int pos, void *e, List *pl)
     else
         return false;
 }
-int InsertList_pair(pair *e, List *pl)
+int InsertList_pair(pair *e, Node *curr, List *pl)
 {
-    Node *p, *q;
+    Node *p;
+    curr = NULL;
     int i = 0;
     if (p = (Node *)malloc(sizeof(Node)))
     {
@@ -296,6 +297,7 @@ int InsertList_pair(pair *e, List *pl)
             }
         }
         pl->size++;
+        curr = p;
         return i;
     }
     else

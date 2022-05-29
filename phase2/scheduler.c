@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
     pair *myPair = (pair *)malloc(sizeof(pair));
     myPair->startingAdd = 0;
     myPair->size = 1024;
-    InsertList_pair(myPair, vector_get(&free_list, 6));
+    InsertList_pair(myPair, NULL, vector_get(&free_list, 6));
 
     List *x = vector_get(&free_list, 6);
     printf("size initail %d\n ", x->size);
@@ -833,12 +833,12 @@ bool allocate(Process proces)
                 pair *h1 = (pair *)malloc(sizeof(pair));
                 h1->startingAdd = hole->startingAdd;
                 h1->size = hole->size / 2;
-                InsertList_pair(h1, list);
+                InsertList_pair(h1, NULL, list);
 
                 pair *h2 = (pair *)malloc(sizeof(pair));
                 h2->startingAdd = hole->startingAdd + hole->size / 2;
                 h2->size = hole->size / 2;
-                InsertList_pair(h2, list);
+                InsertList_pair(h2, NULL, list);
             }
             DeleteList_pair(0, hole, vector_get(&free_list, j));
             printf("add of hole = %d\n", hole->startingAdd);
@@ -871,22 +871,28 @@ void deallocate() // no param passed as we access the pcb using the id of currPr
     newHole->size = sz;
     for (int m = i; m < 7; m++)
     {
-        int j = InsertList_pair(newHole, vector_get(&free_list, m)); // add the hole to the list
-        Display(vector_get(&free_list, m));
         Node *pre = NULL, *curr = NULL, *nxt = NULL;
+        int j = InsertList_pair(newHole, curr, vector_get(&free_list, m)); // add the hole to the list
+        printf("the inserted hole in list %d at index %d and the size of the list now is %d\n", m, j, ListSize(vector_get(&free_list, m)));
+        Display(vector_get(&free_list, m));
         RetrieveList_Node(j - 1, pre, vector_get(&free_list, m));
-        RetrieveList_Node(j, curr, vector_get(&free_list, m));
-        RetrieveList_Node(j + 1, nxt, vector_get(&free_list, m));
+        // RetrieveList_Node(j, curr, vector_get(&free_list, m));
+        // RetrieveList_Node(j + 1, nxt, vector_get(&free_list, m));
+        if (curr)
+            nxt = curr->next;
+        else
+            printf("curr is null\n");
         if (pre) // if there is a prev node aslun check 3laha
         {
-            if ((((pair *)pre->entry)->startingAdd / sz) % 2 == 0)                        // if even
-            {                                                                             // 0 1 2 3
-                                                                                          //  merge
-                DeleteList_pair(j - 1, ((pair *)pre->entry), vector_get(&free_list, m));  // remove pre
-                DeleteList_pair(j - 1, ((pair *)curr->entry), vector_get(&free_list, m)); // remove the curr
-                newHole = (pair *)malloc(sizeof(pair));                                   // don't free this pair
-                newHole->startingAdd = ((pair *)pre->entry)->startingAdd;                 // the start address is the one of the pre
-                sz *= 2;                                                                  // sum of 2 holes
+            printf("pre isn't null\n");
+            if ((((pair *)pre->entry)->startingAdd / sz) % 2 == 0)        // if even
+            {                                                             // 0 1 2 3
+                                                                          //  merge
+                DeleteList_pair(j - 1, NULL, vector_get(&free_list, m));  // remove pre
+                DeleteList_pair(j - 1, NULL, vector_get(&free_list, m));  // remove the curr
+                newHole = (pair *)malloc(sizeof(pair));                   // don't free this pair
+                newHole->startingAdd = ((pair *)pre->entry)->startingAdd; // the start address is the one of the pre
+                sz *= 2;                                                  // sum of 2 holes
                 newHole->size = sz;
 
                 continue; // lo 3mlt merge m3 ali abli m4 ha3ml m3 ali b3di
@@ -894,12 +900,13 @@ void deallocate() // no param passed as we access the pcb using the id of currPr
         }
         if (nxt) // lo fe nxt node check 3laha
         {
+            printf("nxt isn't null\n");
             if ((((pair *)curr->entry)->startingAdd / sz) % 2 == 0)
             { // 0 1 2 3
                 // 0  16  32 64
                 //  merge
-                DeleteList_pair(j, ((pair *)curr->entry), vector_get(&free_list, m)); // remove curr
-                DeleteList_pair(j, ((pair *)nxt->entry), vector_get(&free_list, m));  // remove nxt
+                DeleteList_pair(j, NULL, vector_get(&free_list, m)); // remove curr
+                DeleteList_pair(j, NULL, vector_get(&free_list, m)); // remove nxt
                 newHole = (pair *)malloc(sizeof(pair));
                 newHole->startingAdd = ((pair *)curr->entry)->startingAdd; // the start address is the one of the curr now
                 sz *= 2;
@@ -908,6 +915,7 @@ void deallocate() // no param passed as we access the pcb using the id of currPr
             }
         }
         // lo m3rft4 a3ml merge m3 ai 7aga break
+        printf("I can't merge\n");
         break;
     }
     int s = processTable[currentProc->id - 1]->endAddress - processTable[currentProc->id - 1]->startAddres + 1;
