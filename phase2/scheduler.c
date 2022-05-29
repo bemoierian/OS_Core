@@ -93,8 +93,8 @@ int main(int argc, char *argv[])
 
     ptrM = fopen("memory.log", "w");
     ptr = fopen("scheduler.log", "w");
-    fprintf(ptr, "#At time x process y state arr w total z remain y wait k\n");
-    fprintf(ptrM, "#At time x allocated y bytes for process z from i to j\n");
+    fprintf(ptr, "#At time x process y state arr w total z remain y wait k");
+    fprintf(ptrM, "#At time x allocated y bytes for process z from i to j");
 
     initClk();
 
@@ -131,8 +131,7 @@ int main(int argc, char *argv[])
     printf("number of PS = %d \n", numberOfProcesses);
     switch (sch_algo)
     {
-    case 1:; // HPF
-        printf("Entered case 1\n");
+    case 1:;                                     // HPF
         createPriorityQ(&q1, numberOfProcesses); // create the priority Q
         while (1)                                // this replaces the while(1) by mark to make the scheduler terminate upon finishing all processes to continue after the while loop and terminate itself (process generator does not treminate schedular)
         {
@@ -143,11 +142,10 @@ int main(int argc, char *argv[])
                 if (num_messages > 0)
                 {
                     printf("New Process Recieved \n");
-                    receiveNewProcess();
+                    receiveNewProcess(); // receive the process means make entry for it in process table
                     // call allocate and check if allocated then enqueue
                     if (allocate(message_recieved.m_process))
                     {
-                        printf("IN ALOCATE!!!!!!!!!!!\n");
                         enqueue(&q1, message_recieved.m_process);
                         int strtAdd = processTable[message_recieved.m_process.id - 1]->startAddres;
                         int endAdd = processTable[message_recieved.m_process.id - 1]->endAddress;
@@ -155,24 +153,24 @@ int main(int argc, char *argv[])
                         WriteMemoryLine(ptrM, getClk(), s, message_recieved.m_process.id, strtAdd, endAdd, processTable[message_recieved.m_process.id - 1]->state);
                     }
                     else
-                    {
+                    { // if you can't allocate then add the process to waitQ
                         AddToWaitQ(message_recieved.m_process);
                     }
                 }
             }
             currClk = getClk();
-            if (prevClk != currClk)
+            if (prevClk != currClk) // if a clock cycle passed
             {
                 printf("pCount = %d \n", pCount);
                 printf("clk %d\n", getClk());
                 prevClk = currClk;
-                if (currentProc != NULL)
-                {
+                if (currentProc != NULL) // there is a running process
+                {                        // dec the remaining time of the process
                     printf("PS %d, remaining time %d\n", currentProc->id, processTable[currentProc->id - 1]->remainingTime);
                     decRemainingTimeOfCurrPs();
                 }
             }
-            if (cpuFree)
+            if (cpuFree) // if there is no running process,fork a new one
             {
                 currentProc = (Process *)malloc(sizeof(Process));
                 bool flag = dequeue(&q1, currentProc);
@@ -195,12 +193,12 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    free(currentProc);
+                    free(currentProc); // if there isn't any process in the queue free the pointer
                     currentProc = NULL;
                 }
             }
             if (pCount == numberOfProcesses)
-            {
+            { // if did all the work break the loop and set the finish time
                 finishTime = getClk();
                 break; // if all processes finished break the loop
             }
@@ -550,8 +548,8 @@ int main(int argc, char *argv[])
     float AvgWTA = AVG(WTA, numberOfProcesses);
     float AvgWait = AVG(Wait, numberOfProcesses);
     float StdWTA = StandardDeviation(WTA, numberOfProcesses);
-    WriteFinalOutput(ptr, CPUutilisation, AvgWTA, AvgWait, StdWTA);
-    fclose(ptr); // close the file at the end
+    WriteFinalOutput(ptr, CPUutilisation, AvgWTA, AvgWait, StdWTA); // scheduler.pref
+    fclose(ptr);                                                    // close the file at the end
     // deattach shared memory
     shmdt(ps_shmaddr);
     // free wta
@@ -607,36 +605,36 @@ void TerminateCurrentProcess()
 void WriteOutputLine(FILE *ptr, int time, int process_id, char *state, int arr, int total, int reamain, int wait, int TA, float WTA)
 {
     if (!strcmp(state, "finished"))
-        fprintf(ptr, "At time %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %.2f\n", time, process_id, state, arr, total, reamain, wait, TA, WTA);
+        fprintf(ptr, "\nAt time %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %.2f", time, process_id, state, arr, total, reamain, wait, TA, WTA);
     else
-        fprintf(ptr, "At time %d process %d %s arr %d total %d remain %d wait %d\n", time, process_id, state, arr, total, reamain, wait);
+        fprintf(ptr, "\nAt time %d process %d %s arr %d total %d remain %d wait %d", time, process_id, state, arr, total, reamain, wait);
     fflush(ptr);
 }
 void WriteMemoryLine(FILE *ptr, int time, int size, int proc, int start_Add, int end_Add, char *state)
 {
     if (!strcmp(state, "finished"))
-        fprintf(ptr, "At time %d freed %d bytes for process %d from %d to %d\n", time, size, proc, start_Add, end_Add);
+        fprintf(ptr, "\nAt time %d freed %d bytes for process %d from %d to %d", time, size, proc, start_Add, end_Add);
     else
-        fprintf(ptr, "At time %d allocated %d bytes for process %d from %d to %d\n", time, size, proc, start_Add, end_Add);
+        fprintf(ptr, "\nAt time %d allocated %d bytes for process %d from %d to %d", time, size, proc, start_Add, end_Add);
     fflush(ptr);
 }
 void WriteFinalOutput(FILE *ptr, float cpuUtil, float AvgWTA, float AvgWait, float StdWTA)
 {
-    fprintf(ptr, "CPU utilisation = %.2f %c\nAvg WTA = %.2f\nAvg Waiting = %.2f\nStd WTA = %.2f\n", cpuUtil, '%', AvgWTA, AvgWait, StdWTA);
+    fprintf(ptr, "CPU utilisation = %.2f%c\nAvg WTA = %.2f\nAvg Waiting = %.2f\nStd WTA = %.2f", cpuUtil, '%', AvgWTA, AvgWait, StdWTA);
     fflush(ptr);
 }
 
 void ResumeCurrentProcess()
 {
-    processTable[currentProc->id - 1]->totWaitTime += (getClk() - processTable[currentProc->id - 1]->lastClk);
-    strcpy(processTable[currentProc->id - 1]->state, "resumed"); // set the state running
+    processTable[currentProc->id - 1]->totWaitTime += (getClk() - processTable[currentProc->id - 1]->lastClk); // calc the waiting time of the process
+    strcpy(processTable[currentProc->id - 1]->state, "resumed");                                               // set the state running
+    kill(processTable[currentProc->id - 1]->ID, SIGCONT);                                                      // continue the running process
     WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1]->state, currentProc->arrivalTime,
                     currentProc->runTime, processTable[currentProc->id - 1]->remainingTime, processTable[currentProc->id - 1]->totWaitTime, 0, 0);
-    kill(processTable[currentProc->id - 1]->ID, SIGCONT);
 }
 void StopCurrentProcess()
 {
-    processTable[currentProc->id - 1]->lastClk = getClk();
+    processTable[currentProc->id - 1]->lastClk = getClk();       // set the curr clock as the it's the last clock the process worked in
     kill(processTable[currentProc->id - 1]->ID, SIGSTOP);        // to stop the running process
     strcpy(processTable[currentProc->id - 1]->state, "stopped"); // set the state running
     WriteOutputLine(ptr, getClk(), currentProc->id, processTable[currentProc->id - 1]->state, currentProc->arrivalTime,
@@ -739,12 +737,12 @@ bool allocate(Process proces)
 {
     bool isAllocated = false;
     int n = ceil(log(proces.size) / log(2)); // nearest power of 2 to the passed size
-    if (n <= 4)
+    if (n <= 4)                              // if the size of the process <= 16 allocate 16
     {
-        n = 0; // first list
+        n = 0; // index of the first list (size 16)
     }
     else
-    {
+    {           // our threshold is 16KB not 0 so min size for a process
         n -= 4; // 34an azbt dal index bta3 al vector 3la al min ali na 7ato
     }
     int i = n;
@@ -752,11 +750,8 @@ bool allocate(Process proces)
     {
         i++;
     }
-    if (i >= 7) // insert in waitQ if there is no holes available
-    {
-        isAllocated = false; // you can't add
-    }
-    else // there is a hole available
+    // if i >=7 that means there is no available hole so isAllocated = false
+    if (i < 7) // there is a hole available
     {
         pair *hole = (pair *)malloc(sizeof(pair));
         if (i == n) // no dividing is needed
@@ -792,6 +787,7 @@ bool allocate(Process proces)
     printf("isAllocated = %d\n", isAllocated);
     return isAllocated;
 }
+// add the process to the waiting Q
 void AddToWaitQ(Process p)
 {
     Process *newp = (Process *)malloc(sizeof(Process));
@@ -865,6 +861,7 @@ void deallocate() // no param passed as we access the pcb using the id of currPr
     Node *tempo = waitQ->head;
     int m = 0;
     Process newProc;
+    // we choose the next process to run using first fit algorithm
     while (m < waitQ->size)
     {
         RetrieveList_process(m, &newProc, waitQ);

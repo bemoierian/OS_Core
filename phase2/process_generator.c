@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
 {
     signal(SIGINT, clearResources);
     // DESTROY RESOURCES
-   
+
     // TODO Initialization
     // 1. Read the input files.
     FILE *ptr;
@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
             message_send.m_process = processes[i];
             message_send.mtype = 7;
             send_val = msgsnd(msgq_id, &message_send, sizeof(message_send.m_process), !IPC_NOWAIT);
-            //up sem3
+
             if (send_val == -1)
                 perror("Error: process_generator failed to send the input message \n");
             processes[i].arrivalTime = -1;
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
     }
 
     free(processes);
-    
+
     waitpid(pid2, NULL, 0); // wait for the schedular till it finishes
     // 7. Clear clock resources
     printf("process generator destroying clock\n");
@@ -146,10 +146,11 @@ void clearResources(int signum)
     semctl(sem1, 0, IPC_RMID, (union Semun)0);
     // Clear clock resources
     printf("process generator destroying clock\n");
-    signal(SIGINT, SIG_DFL); //Clock will send SIGINT again to terminate process generator
-    destroyClk(true); // if your press ctrl+c you have to kill other processes so we need to call destroy clk
-}       
-void GetAllResources(){
+    signal(SIGINT, SIG_DFL); // Clock will send SIGINT again to terminate process generator
+    destroyClk(true);        // if your press ctrl+c you have to kill other processes so we need to call destroy clk
+}
+void GetAllResources()
+{
     ps_shmid = shmget(PS_SHM_KEY, 4, IPC_CREAT | 0644);
     if (ps_shmid == -1)
     {

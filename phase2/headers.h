@@ -23,14 +23,13 @@ typedef short bool;
 #define MSGKEY 301
 #define PS_SHM_KEY 402
 #define SEM1_KEY 450
-// min memory allocated for a process
-#define MIN_PROCESS 32 // 2^5
-#define MAX_PROCESS 256
+
 ///==============================
 // don't mess with this variable//
-int *shmaddr; //
-              //===============================
-              // struct holds the process data
+int *shmaddr;
+//=====================================
+
+// struct holds the process data
 typedef struct processData
 {
     int id; // ID of the process
@@ -77,7 +76,7 @@ typedef struct vector
     int maxSize;
     int size;
 } vector;
-
+// initialize the vector
 void vector_init(vector *v, int s)
 {
     v->maxSize = s;
@@ -95,7 +94,7 @@ static void vector_resize(vector *v, int maxSize)
 #ifdef DEBUG_ON
     printf("vector_resize: %d to %d\n", v->maxSize, maxSize);
 #endif
-
+    // reallocate the vector with larger size with the same data if it becomes full
     void **items = realloc(v->items, sizeof(void *) * maxSize);
     if (items)
     {
@@ -103,40 +102,29 @@ static void vector_resize(vector *v, int maxSize)
         v->maxSize = maxSize;
     }
 }
-bool vactor_isFull(vector *v)
-{
-    if (v->maxSize == v->size)
-        return true;
-    return false;
-}
-bool vector_isEmpty(vector *v)
-{
-    if (v->size == 0)
-    {
-        return true;
-    }
-    return false;
-}
+
+// add new element in the vector and resize it if size of the vector becomes = the maxSize passed in create function
+// so that the vector won't be full
 void vector_add(vector *v, void *item)
 {
     if (v->maxSize == v->size)
         vector_resize(v, v->maxSize * 2);
     v->items[v->size++] = item;
 }
-
+// sent an element in the vector
 void vector_set(vector *v, int index, void *item)
 {
     if (index >= 0 && index < v->size)
         v->items[index] = item;
 }
-
+// get an element in the vector
 void *vector_get(vector *v, int index)
 {
     if (index >= 0 && index < v->size)
         return v->items[index];
     return NULL;
 }
-
+// delete an element in the vector
 void vector_delete(vector *v, int index)
 {
     if (index < 0 || index >= v->size)
@@ -163,23 +151,24 @@ void vector_free(vector *v)
 
 // pair definition
 typedef struct Pair
-{
-    int startingAdd;
-    int size; // or process size
+{                    // to represent the hole using starting address and its size
+    int startingAdd; // starting address of the hole
+    int size;        // size of the hole
 } pair;
 // LINKED LIST IMPLEMENTATION
 typedef struct listnode
 {
-    void *entry;
+    void *entry; // generic data in the list node
     struct listnode *next;
 } Node;
+
 typedef struct list
 {
     Node *head;
     int size;
 } List;
 
-void CreateList(List *pl)
+void CreateList(List *pl) // List initialization
 {
     pl->head = NULL;
     pl->size = 0;
@@ -206,17 +195,9 @@ void DestroyList(List *pl)
     }
     pl->size = 0;
 }
-void TraverseList(List *pl, void (*Visit)(void *)) // frist param is list and second param is the funstion to raverse over the linked list
-{                                                  // data type of the func param
-    Node *p = pl->head;
-    while (p)
-    {
-        (*Visit)(p->entry);
-        p = p->next;
-    }
-}
+
 void Display(List *pl)
-{ // data type of the func param
+{ // Display the list of holes in buddy algorith
     Node *p = pl->head;
     while (p)
     {
@@ -224,6 +205,7 @@ void Display(List *pl)
         p = p->next;
     }
 }
+// insert a new node at the passed position
 bool InsertList(int pos, void *e, List *pl)
 {
     Node *p, *q;
@@ -251,8 +233,9 @@ bool InsertList(int pos, void *e, List *pl)
     else
         return false;
 }
+// used with lists in buddy algorithm to sort accoriding to the starting address
 int InsertList_pair(pair *e, List *pl)
-{
+{ // insert sorted in the list and return the index of the added element
     Node *p;
     int i = 0;
     if (p = (Node *)malloc(sizeof(Node)))
@@ -301,7 +284,7 @@ int InsertList_pair(pair *e, List *pl)
     else
         return -1;
 }
-void DeleteList_process(int pos, Process *pe, List *pl)
+void DeleteList_process(int pos, Process *pe, List *pl) // delete process from the waitQ
 {
     int i;
     Node *q, *tmp;
@@ -424,7 +407,7 @@ void down(int sem)
     {
         continue;
     }
-    //printf("------INSIDE DOWN-----\n");
+    // printf("------INSIDE DOWN-----\n");
     if (val == -1)
     {
         perror("Error in down()\n");

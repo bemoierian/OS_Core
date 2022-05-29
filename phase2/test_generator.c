@@ -29,10 +29,10 @@ int main(int argc, char *argv[])
         // generate Data Randomly
         //[min-max] = rand() % (max_number + 1 - minimum_number) + minimum_number
         pData.id = i;
-        pData.arrivaltime += rand() % (11); // processes arrives in order
-        pData.runningtime = rand() % (30);  // max running time is 29
-        pData.priority = rand() % (11);     // max number is 10
-        pData.size = rand() % 266;          // max size for a process is 266
+        pData.arrivaltime += rand() % (11);        // processes arrives in order
+        pData.runningtime = rand() % (30);         // max running time is 29
+        pData.priority = rand() % (11);            // max number is 10
+        pData.size = (rand() % (256 + 1 - 1)) + 1; // min size of a procss = 1 and max size for a process is 256
         fprintf(pFile, "%d\t%d\t%d\t%d\t%d\n", pData.id, pData.arrivaltime, pData.runningtime, pData.priority, pData.size);
     }
     fclose(pFile);
