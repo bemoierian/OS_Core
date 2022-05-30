@@ -10,8 +10,7 @@ typedef struct processControlBlock
     int responseTime; // startTime - Arrival
     int startTime;    // Start time of Running
     int priority;
-    int cumulativeTime; //  cumulative runtime of the process
-    int lastClk;        // to represent the last clk the process was warking in
+    int lastClk; // to represent the last clk the process was warking in
 } PCB;
 ////////////////////
 int pCount = 0;              // counter to know if all processes finished

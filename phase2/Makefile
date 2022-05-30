@@ -10,8 +10,8 @@ clean:
 
 all: clean build
 
+test:
+	./test_generator.out
 run:
 	./process_generator.out
-test:
-	#./test_generator.out
 

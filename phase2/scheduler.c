@@ -10,9 +10,8 @@ typedef struct processControlBlock
     int responseTime; // startTime - Arrival
     int startTime;    // Start time of Running
     int priority;
-    int cumulativeTime; //  cumulative runtime of the process
-    int lastClk;        // to represent the last clk the process was warking in
-    int startAddres;    // start address and end address of the process
+    int lastClk;     // to represent the last clk the process was warking in
+    int startAddres; // start address and end address of the process
     int endAddress;
 } PCB;
 ////////////////////
@@ -22,7 +21,7 @@ Process *currentProc = NULL; // the currently running process
 PCB **processTable;          // the process table of the OS
 float *WTA;
 float *Wait;
-int sch_algo;
+int sch_algo; // represent which algo it will use
 //-----SHARED MEMORY AND SEMAPHORE VARIABLES----
 int sem1;
 int ps_shmid;
@@ -544,18 +543,10 @@ int main(int argc, char *argv[])
     ptr = fopen("scheduler.perf", "w");
     printf("finish Time = %d \n", finishTime);
     printf("runTime Time = %d \n", total_runtime);
-    float CPUutilisation, AvgWTA, AvgWait, StdWTA;
-    if (finishTime != 0 && numberOfProcesses != 0)
-    {
-        CPUutilisation = ((float)total_runtime / finishTime) * 100;
-        AvgWTA = AVG(WTA, numberOfProcesses);
-        AvgWait = AVG(Wait, numberOfProcesses);
-        StdWTA = StandardDeviation(WTA, numberOfProcesses);
-    }
-    else
-    {
-        CPUutilisation = AvgWTA = AvgWait = StdWTA = 0;
-    }
+    float CPUutilisation = ((float)total_runtime / finishTime) * 100;
+    float AvgWTA = AVG(WTA, numberOfProcesses);
+    float AvgWait = AVG(Wait, numberOfProcesses);
+    float StdWTA = StandardDeviation(WTA, numberOfProcesses);
     WriteFinalOutput(ptr, CPUutilisation, AvgWTA, AvgWait, StdWTA); // scheduler.pref
     fclose(ptr);                                                    // close the file at the end
     // deattach shared memory
