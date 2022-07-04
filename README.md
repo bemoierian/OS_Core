@@ -80,22 +80,23 @@ The project consists of two phases:
     it manages the process uisng one of the following algorithms (depends on the user choice)<br>
     1. Non-preemptive Highest Priority First (HPF).<br>
     2. Shortest Remaining time Next (SRTN).<br>
-    3. Round Robin (RR)<br>
-    The scheduling algorithm only works on the processes in the ready queue. (Processes that have already arrived.)<br>
-    The scheduler should be able to<br>
+    3. Round Robin (RR)<br><br>
+    The scheduling algorithm only works on the processes in the ready queue. (Processes that have already arrived.)<br><br>
+    The scheduler should be able to: <br>
     1. Start a new process. (Fork it and give it its parameters.)<br>
     2. Switch between two processes according to the scheduling algorithm. (Stop the old process and save its state and start/resume another one.)<br>
     3. Keep a process control block (PCB) for each process in the system. A PCB<br>
     should keep track of the state of a process; running/waiting, execution time, remaining time, waiting time, etc.
-    4. Delete the data of a process when it gets notifies that it finished. When a process finishes it should notify the scheduler on termination, the scheduler does NOT terminate the process.<br>
+    4. Delete the data of a process when it gets notifies that it finished. When a process finishes it should notify the scheduler on termination, the scheduler does NOT terminate the process.<br><br>
     5. Report the following information <br>
     (a) CPU utilization.<br>
     (b) Average weighted turnaround time.<br>
     (c) Average waiting time.<br>
-    (d) Standard deviation for average weighted turnaround time.<br>
+    (d) Standard deviation for average weighted turnaround time.<br><br>
     6. Generate two files: (check the input/output section below)<br>
     (a) Scheduler.log<br>
     (b) Scheduler.perf<br>
+    (c) In addition to memory.log in phase two <br>
     <li>
     <h3>Part IV: Process (Simulation & IPC)</h3>
     <h6>Code File process.c</h6>
