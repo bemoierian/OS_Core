@@ -72,7 +72,7 @@ The project consists of two phases:
     The clock module is used to emulate an integer time clock.
     <li>
         <h3>Part III: Scheduler (OS Design & IPC)</h3>
-        h6>Code File scheduler.c</h6>
+        <h6>Code File scheduler.c</h6>
     </li>
     The scheduler is the core of your work, it should keep track of the processes and their
     states and it decides - based on the used algorithm - which process will run and for
