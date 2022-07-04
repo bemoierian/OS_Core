@@ -109,7 +109,7 @@ The project consists of two phases:
     How To Run
 </h2>
 <p>
-You can use Makefile to build and run the project:<br>
+You can use Makefile to build and run the project.<br>
 To compile your project, use the command:<br>
 make<br>
 To run your project, use the command:<br>
