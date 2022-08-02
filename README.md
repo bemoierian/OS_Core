@@ -17,7 +17,7 @@ The project consists of two phases:
     <li>
         <h5>phase 1:</h5>
         <p>
-        Asuume a Computer with 1-CPU and infinite memory. It is required to make a
+        Assume a Computer with 1-CPU and infinite memory. It is required to make a
         scheduler with its complementary components as sketched in the following diagrams.
         </p>
         <div>
