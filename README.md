@@ -32,7 +32,7 @@ The project consists of two phases:
         Same assumptions of phase one in addtion to:
         <ol>
         <li>
-            he total memory size is 1024 bytes
+            The total memory size is 1024 bytes
         </li>
         <li>
             Each process size is less than or equal 1024 bytes.
