@@ -50,7 +50,7 @@ The project consists of two phases:
 </p>
 
 <h2>
-    How does a OS Scheduler work?
+    How does the OS Scheduler work?
 </h2>
 <p>
 <ul>
